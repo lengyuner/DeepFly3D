@@ -31,10 +31,10 @@ from mpl_toolkits.mplot3d import axes3d, Axes3D
 from deepfly.pose3d.procrustes.procrustes import procrustes_seperate
 from logging import getLogger
 
-img3d_dpi = 100  # this is the dpi for one image on the 3d video's grid
+img3d_dpi = 400  # this is the dpi for one image on the 3d video's grid
 img3d_aspect = (2, 2)  # this is the aspect ration for one image on the 3d video's grid
 img2d_aspect = (2, 1)  # this is the aspect ration for one image on the 3d video's grid
-video_width = 500  # total width of the 2d and 3d videos
+video_width = 1920  # total width of the 2d and 3d videos
 
 known_users = [  
     (r'/CLC/', [0, 6, 5, 4, 3, 2, 1]),
@@ -228,6 +228,7 @@ def _make_pose3d_video(args):
             return img
         
         for img_id in range(args.num_images):
+            print("img_id:"+str(img_id))
             yield stack(img_id)
 
     # We can call next(generator) on this instance to get the images, just like for an iterator
@@ -249,7 +250,7 @@ def _make_video(args, video_name, imgs):
     video_path = os.path.join(args.input_folder, args.output_folder, video_name)
     getLogger('df3d').debug('Saving video to: ' + video_path)
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    fps = 30
+    fps = 100
     output_shape = _resize(current_shape=shape, new_width=video_width)
     getLogger('df3d').debug('Video size is: {}'.format(output_shape))
     video_writer = cv2.VideoWriter(video_path, fourcc, fps, output_shape)
