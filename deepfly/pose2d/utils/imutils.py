@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import random
+import imageio
 
 import cv2
 import numpy as np
@@ -29,7 +30,12 @@ def im_to_torch(img):
 
 def load_image(img_path):
     # H x W x C => C x H x W
-    return im_to_torch(scipy.misc.imread(img_path, mode="RGB"))
+    im = imageio.imread(img_path)
+    if len(im.shape) == 2:
+        im = np.repeat(im[:,:,np.newaxis], 3, axis=2)
+    assert im.shape == (480, 960, 3) #not supported otherwise
+    im = np.array(im)
+    return im_to_torch(im)
 
 
 def save_image(img_path, img):
