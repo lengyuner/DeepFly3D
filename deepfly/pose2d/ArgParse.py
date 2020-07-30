@@ -102,6 +102,22 @@ def add_arguments(parser):
         help="path to save checkpoint (default: checkpoint)",
     )
     parser.add_argument(
+        "--csv-file-train",
+        default=None,
+        dest="csv_file_train",
+        type=str,
+        metavar="PATH",
+        help="path to csv file",
+    )
+    parser.add_argument(
+        "--csv-file-val",
+        default=None,
+        dest="csv_file_val",
+        type=str,
+        metavar="PATH",
+        help="path to csv file",
+    )
+    parser.add_argument(
         "--data-folder",
         dest="data_folder",
         default="data/drosophila/",
