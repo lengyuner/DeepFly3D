@@ -9,9 +9,74 @@ from deepfly.GUI.Config import config
 from logging import getLogger
 import logging
 import glob
+import pdb
 
 FOLDER_NAME = 0
 IMAGE_NAME = 1
+
+def parse_csv_annotations(line):
+    ANTENNA = 1
+    BACK = ANTENNA + 2*1
+    FRONT_LEG = BACK + 2*3
+    MID_LEG = FRONT_LEG + 2*5
+    BACK_LEG = MID_LEG + 2*5
+    cid = int(os.path.basename(line[0])[7])
+    out = np.zeros([40,2])
+    if cid < 3:
+        out[30,:] = [float(line[ANTENNA]), float(line[ANTENNA + 1])]
+
+        out[0,:] = [float(line[FRONT_LEG]), float(line[FRONT_LEG + 1])]
+        out[1,:] = [float(line[FRONT_LEG + 2*1]), float(line[FRONT_LEG + 2*1 + 1])]
+        out[2,:] = [float(line[FRONT_LEG + 2*2]), float(line[FRONT_LEG + 2*2 + 1])]
+        out[3,:] = [float(line[FRONT_LEG + 2*3]), float(line[FRONT_LEG + 2*3 + 1])]
+        out[4,:] = [float(line[FRONT_LEG + 2*4]), float(line[FRONT_LEG + 2*4 + 1])]
+
+        out[5 ,:] = [float(line[MID_LEG]), float(line[MID_LEG + 1])]
+        out[6 ,:] = [float(line[MID_LEG + 2*1]), float(line[MID_LEG + 2*1 + 1])]
+        out[7 ,:] = [float(line[MID_LEG + 2*2]), float(line[MID_LEG + 2*2 + 1])]
+        out[8 ,:] = [float(line[MID_LEG + 2*3]), float(line[MID_LEG + 2*3 + 1])]
+        out[9 ,:] = [float(line[MID_LEG + 2*4]), float(line[MID_LEG + 2*4 + 1])]
+
+        out[10 ,:] = [float(line[BACK_LEG]), float(line[BACK_LEG + 1])]
+        out[11 ,:] = [float(line[BACK_LEG + 2*1]), float(line[BACK_LEG + 2*1 + 1])]
+        out[12 ,:] = [float(line[BACK_LEG + 2*2]), float(line[BACK_LEG + 2*2 + 1])]
+        out[13 ,:] = [float(line[BACK_LEG + 2*3]), float(line[BACK_LEG + 2*3 + 1])]
+        out[14 ,:] = [float(line[BACK_LEG + 2*4]), float(line[BACK_LEG + 2*4 + 1])]
+
+        out[31,:] = [float(line[BACK]), float(line[BACK + 1])]
+        out[32,:] = [float(line[BACK + 2*1]), float(line[BACK + 2*1 + 1])]
+        out[33,:] = [float(line[BACK + 2*2]), float(line[BACK + 2*2 + 1])]
+
+    if cid > 3:
+        out[35,:] = [float(line[ANTENNA]), float(line[ANTENNA + 1])]
+
+        out[15,:] = [float(line[FRONT_LEG]), float(line[FRONT_LEG + 1])]
+        out[16,:] = [float(line[FRONT_LEG + 2*1]), float(line[FRONT_LEG + 2*1 + 1])]
+        out[17,:] = [float(line[FRONT_LEG + 2*2]), float(line[FRONT_LEG + 2*2 + 1])]
+        out[18,:] = [float(line[FRONT_LEG + 2*3]), float(line[FRONT_LEG + 2*3 + 1])]
+        out[19,:] = [float(line[FRONT_LEG + 2*4]), float(line[FRONT_LEG + 2*4 + 1])]
+
+        out[20,:] = [float(line[MID_LEG]), float(line[MID_LEG + 1])]
+        out[21,:] = [float(line[MID_LEG + 2*1]), float(line[MID_LEG + 2*1 + 1])]
+        out[22,:] = [float(line[MID_LEG + 2*2]), float(line[MID_LEG + 2*2 + 1])]
+        out[23,:] = [float(line[MID_LEG + 2*3]), float(line[MID_LEG + 2*3 + 1])]
+        out[24,:] = [float(line[MID_LEG + 2*4]), float(line[MID_LEG + 2*4 + 1])]
+
+        out[25,:] = [float(line[BACK_LEG]), float(line[BACK_LEG + 1])]
+        out[26,:] = [float(line[BACK_LEG + 2*1]), float(line[BACK_LEG + 2*1 + 1])]
+        out[27,:] = [float(line[BACK_LEG + 2*2]), float(line[BACK_LEG + 2*2 + 1])]
+        out[28,:] = [float(line[BACK_LEG + 2*3]), float(line[BACK_LEG + 2*3 + 1])]
+        out[29,:] = [float(line[BACK_LEG + 2*4]), float(line[BACK_LEG + 2*4 + 1])]
+
+        out[36,:] = [float(line[BACK]), float(line[BACK + 1])]
+        out[37,:] = [float(line[BACK + 2*1]), float(line[BACK + 2*1 + 1])]
+        out[38,:] = [float(line[BACK + 2*2]), float(line[BACK + 2*2 + 1])]
+    if cid == 3:
+        pass
+    out[out < 10] = 0
+    out[:,0] = out[:,0] / 960
+    out[:,1] = out[:,1] / 480
+    return out
 
 class Drosophila(data.Dataset):
     def __init__(
@@ -23,6 +88,7 @@ class Drosophila(data.Dataset):
         train=True,
         sigma=1,
         jsonfile="drosophilaimaging-export.json",
+        csvfile=None,
         session_id_train_list=None,
         folder_train_list=None,
         augmentation=False,
@@ -35,6 +101,7 @@ class Drosophila(data.Dataset):
         self.data_folder = data_folder  # root image folders
         self.data_corr_folder = data_corr_folder
         self.json_file = os.path.join(jsonfile)
+        self.csv_file = os.path.join(csvfile) if csvfile else None
         self.is_train = train  # training set or test set
         self.img_res = img_res
         self.hm_res = hm_res
@@ -78,6 +145,15 @@ class Drosophila(data.Dataset):
                                 image_name
                             ]["position"]
                         self.annotation_dict[key] = np.array(pts)
+        #parse csv file annotations
+        if not self.unlabeled and self.csv_file and isfile(self.csv_file):
+            csvfile = open(self.csv_file, 'r')
+            for line in csvfile:
+                line = line.split(',')
+                key = (os.path.dirname(line[0]), os.path.basename(line[0]))
+                self.cidread2cid[key[FOLDER_NAME]] = np.arange(config["num_cameras"])
+                self.annotation_dict[key] = parse_csv_annotations(line)
+                #self.annotation_dict[key] = np.random.rand(40,2)
 
         # read the manual correction for training data
         getLogger('df3d').debug("Searching for manual corrections")
@@ -146,7 +222,8 @@ class Drosophila(data.Dataset):
                         continue
                     if self.max_img_id is not None and img_id > self.max_img_id:
                         continue
-                    self.annotation_dict[key] = np.zeros(shape=(config["skeleton"].num_joints, 2))
+                    #self.annotation_dict[key] = np.zeros(shape=(config["skeleton"].num_joints, 2))
+                    self.annotation_dict[key] = np.zeros([40,2])
 
         # make sure data is in the folder
         for folder_name, image_name in self.annotation_dict.copy().keys():
@@ -164,6 +241,8 @@ class Drosophila(data.Dataset):
             )
 
             if not (os.path.isfile(image_file) or os.path.isfile(image_file_pad)):
+                print(image_file)
+                print(image_file_pad)
                 self.annotation_dict.pop((folder_name, image_name), None)
                 print("FileNotFound: {}/{} ".format(folder_name, image_name))
         """
@@ -177,17 +256,30 @@ class Drosophila(data.Dataset):
             cid_read, img_id = parse_img_name(k[IMAGE_NAME])
             folder_name = k[FOLDER_NAME]
             cid = self.cidread2cid[folder_name][cid_read] if cid_read != 7 else 3
-            if "annot" in k[FOLDER_NAME]:
+            if "data" in k[FOLDER_NAME]:
+                #old? code that doesnt include the stripe???
+                #if cid > 3:  # then right camera
+                #    v[:15, :] = v[15:30:]
+                #    v[15] = v[35]  # 35 is the second antenna
+                #elif cid < 3:
+                #    v[15] = v[30]  # 30 is the first antenna
+                #elif cid== 3 or cid == 7:
+                #    pass
+                #else:
+                #    raise NotImplementedError
+                #v[16:, :] = 0.0
                 if cid > 3:  # then right camera
-                    v[:15, :] = v[15:30:]
+                    v[0:15, :] = v[15:30, :]
                     v[15] = v[35]  # 35 is the second antenna
+                    v[16:19] = v[36:39] # stripes
                 elif cid < 3:
                     v[15] = v[30]  # 30 is the first antenna
+                    v[16:19] = v[31:34] #stripes
                 elif cid== 3 or cid == 7:
                     pass
                 else:
                     raise NotImplementedError
-                v[16:, :] = 0.0
+                v[19:, :] = 0.0
             else:  # then manual correction
                 if cid > 3:  # then right camera
                     v[: self.num_classes, :] = v[self.num_classes :, :]
@@ -271,7 +363,8 @@ class Drosophila(data.Dataset):
         )
         cid_read, pose_id = parse_img_name(img_name)
         cid = self.cidread2cid[folder_name][cid_read]
-        flip = cid in config["flip_cameras"] and ("annot" in folder_name or ( "annot" not in folder_name and self.unlabeled))
+        #flip = cid in config["flip_cameras"] and ("annot" in folder_name or ( "annot" not in folder_name and self.unlabeled))
+        flip = cid in config["flip_cameras"] and ("data" in folder_name or ( "data" not in folder_name and self.unlabeled))
 
         try:
             img_orig = load_image(self.__get_image_path(folder_name, cid_read, pose_id))
