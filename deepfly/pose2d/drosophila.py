@@ -34,6 +34,8 @@ from logging import getLogger
 import logging
 import cv2
 
+import pdb
+
 best_acc = 0
 
 def weighted_mse_loss(inp, target, weights):
@@ -143,7 +145,11 @@ def main(args):
     getLogger('df3d').debug("Total params: %.2fM" % (sum(p.numel() for p in model.parameters()) / 1000000.0))
 
     if args.unlabeled:
+        if args.unlabeled[0] == '/': #wtf why does it have a slash before it where did that come from?
+            args.unlabeled = args.unlabeled[1:]
         unlabeled_folder = args.unlabeled
+        print("UNLABELED FOLDER:")
+        print(unlabeled_folder)
         max_img_id = get_max_img_id(unlabeled_folder)
         try:
             max_img_id = min(max_img_id, args.num_images_max-1)
@@ -201,7 +207,7 @@ def main(args):
             val_pred,
             os.path.join(
                 args.data_folder,
-                "/{}".format(unlabeled_folder),
+                "{}".format(unlabeled_folder),
                 args.output_folder,
                 "./preds_{}.pkl".format(unlabeled_folder_replace),
             ),
@@ -250,14 +256,12 @@ def main(args):
                     "best_acc": best_acc,
                     "optimizer": optimizer.state_dict(),
                     "multiview": args.multiview,
-                    "temporal": args.temporal,
                     "image_shape": args.img_res,
                     "heatmap_shape": args.hm_res,
                 },
                 val_pred,
                 is_best,
                 checkpoint=args.checkpoint,
-                snapshot=args.snapshot,
             )
 
             fig = plt.figure()
@@ -291,7 +295,7 @@ def train(train_loader, epoch, model, optimizer, criterion, args):
 
     end = time.time()
 
-    bar = Bar("Processing", max=len(train_loader)) if logging.getLogger('df3d').isEnabledFor(logging.DEBUG) else NoOutputBar()
+    bar = Bar("Processing", max=len(train_loader))# if logging.getLogger('df3d').isEnabledFor(logging.DEBUG) else NoOutputBar()
     bar.start()
     for i, (inputs, target, meta) in enumerate(train_loader):
         # reset seed for truly random transformations on input
@@ -310,7 +314,7 @@ def train(train_loader, epoch, model, optimizer, criterion, args):
         score_map = output[-1].data.cpu()
 
         loss_weight = torch.ones((inputs.size(0), args.num_classes, 1, 1))
-        if np.any(meta["joint_exists"] == 0):
+        if np.any(np.array(meta["joint_exists"]) == 0):
             batch_index = (np.logical_not(meta["joint_exists"])).nonzero()[:, 0]
             joint_index = (np.logical_not(meta["joint_exists"])).nonzero()[:, 1]
             loss_weight[batch_index, joint_index, :, :] = 0.0
@@ -457,11 +461,13 @@ def validate(val_loader, epoch, model, criterion, args, save_path=False):
     getLogger('df3d').debug("Predictions shape {}".format(predictions.shape))
 
     if save_path is not None:
+        print("SAVE_PATH:")
+        print(save_path)
         unlabeled_folder_replace = save_path.replace("/", "-")
         # score_map_filename = os.path.join(args.data_folder, "./heatmap_{}.pkl".format(unlabeled_folder_replace))
         score_map_filename = os.path.join(
             args.data_folder,
-            "/{}".format(save_path),
+            "{}".format(save_path),
             args.output_folder,
             "heatmap_{}.pkl".format(unlabeled_folder_replace),
         )
@@ -484,7 +490,7 @@ def validate(val_loader, epoch, model, criterion, args, save_path=False):
     model.eval()
 
     end = time.time()
-    bar = Bar("Processing", max=len(val_loader)) if logging.getLogger('df3d').isEnabledFor(logging.INFO) else NoOutputBar()
+    bar = Bar("Processing", max=len(val_loader)) #if logging.getLogger('df3d').isEnabledFor(logging.INFO) else NoOutputBar()
     bar.start()
     for i, (inputs, target, meta) in enumerate(val_loader):
         # measure data loading time
@@ -632,13 +638,13 @@ def create_dataloader():
     train_session_id_list, test_session_id_list = session_id_list, session_id_list
     if args.train_folder_list is None:
         args.train_folder_list = [
-            "2018-05-29--18-58-22--semih",
+            "data/labeled/right_side_short",
         ]
-    test_folder_list = ["2018-06-07--17-00-16--semih-walking--3"]
+    test_folder_list = ["data/labeled/right_side_short"]
     # make sure training and test sets are mutually exclusive
-    assert (
-        len(set.intersection(set(args.train_folder_list), set(test_folder_list))) == 0
-    )
+    #assert (
+    #    len(set.intersection(set(args.train_folder_list), set(test_folder_list))) == 0
+    #)
 
     train_loader = DataLoader(
         deepfly.pose2d.datasets.Drosophila(
@@ -651,7 +657,8 @@ def create_dataloader():
             hm_res=args.hm_res,
             augmentation=args.augmentation,
             num_classes=args.num_classes,
-            jsonfile=args.json_file
+            jsonfile=args.json_file,
+            csvfile=args.csv_file_train,
         ),
         batch_size=args.train_batch,
         shuffle=True,
@@ -671,7 +678,8 @@ def create_dataloader():
             augmentation=False,
             evaluation=True,
             num_classes=args.num_classes,
-            jsonfile=args.json_file
+            jsonfile=args.json_file,
+            csvfile=args.csv_file_val,
         ),
         batch_size=args.test_batch,
         shuffle=False,
@@ -693,6 +701,7 @@ if __name__ == "__main__":
         p = [(i * 5) + k for k in args.acc_joints]
         acc_joints_tmp.extend(p)
     args.acc_joints = acc_joints_tmp
+    getLogger('df3d').setLevel(10)
     getLogger('df3d').debug(f"Training joints: {args.train_joints}")
     getLogger('df3d').debug(f"Acc joints: {args.acc_joints}")
 
