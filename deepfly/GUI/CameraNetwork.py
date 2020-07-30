@@ -101,9 +101,12 @@ class CameraNetwork:
 
                     heatmap = np.load(file=heatmap_path_list[0], allow_pickle=True)
                     self.dict_name = os.path.dirname(list(heatmap.keys())[10]) + "/"
+            if heatmap is None and len(heatmap_path_list) == 0 and pred is not None:
+                print("Error: no heatmaps", file=sys.stderr)
+                exit(9)
 
             for cam_id in cam_id_list:
-                cam_id_read = cid2cidread[cam_id]
+                cam_id_read = self.cid2cidread[cam_id]
 
                 if heatmap is not None:# and type(heatmap) is np.core.memmap:
                     pred_cam = np.zeros(
