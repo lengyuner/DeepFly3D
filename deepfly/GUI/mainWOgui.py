@@ -69,9 +69,9 @@ class DrosophAnnot():
         ]
 
         self.image_pose_list_bot = [
-            ImagePose(self.state, self.camNetRight[0], self.solve_bp),
-            ImagePose(self.state, self.camNetRight[1], self.solve_bp),
-            ImagePose(self.state, self.camNetRight[2], self.solve_bp),
+            ImagePose(self.state, self.camNetRight[0], self.solve_bp_right),
+            ImagePose(self.state, self.camNetRight[1], self.solve_bp_right),
+            ImagePose(self.state, self.camNetRight[2], self.solve_bp_right),
         ]
         # setting the initial state
         #self.set_pose(self.state.img_id)
@@ -170,6 +170,59 @@ class DrosophAnnot():
         if self.state.mode == Mode.CORRECTION:
             self.set_pose(self.state.img_id)
 
+    def solve_bp_right(self, save_correction=False):
+        if not (
+            self.state.mode == Mode.CORRECTION
+            and self.state.solve_bp
+            and self.camNetRight.has_calibration()
+            and self.camNetRight.has_pose()
+        ):
+            print("solve BP right exiting w/o run")
+            return
+
+        prior = list()
+        for ip in self.image_pose_list_bot:
+            if ip.dynamic_pose is not None:
+                for (joint_id, pt2d) in ip.dynamic_pose.manual_correction_dict.items():
+                    prior.append(
+                        (ip.cam.cam_id, joint_id, pt2d / config["image_shape"])
+                    )
+        #print("Prior for BP: {}".format(prior))
+        pts_bp = self.state.camNetRight.solveBP( #why is it only solving BP for the left camnet??
+            self.state.img_id, config["bone_param"], prior=prior
+        )
+        pts_bp = np.array(pts_bp)
+
+        # set points which are not estimated by bp
+        for idx, image_pose in enumerate(self.image_pose_list_bot):
+            pts_bp_ip = pts_bp[idx] * config["image_shape"]
+            pts_bp_rep = self.state.db.read(image_pose.cam.cam_id, self.state.img_id)
+            if pts_bp_rep is None:
+                pts_bp_rep = image_pose.cam.points2d[self.state.img_id, :]
+            else:
+                pts_bp_rep *= config["image_shape"]
+            pts_bp_ip[pts_bp_ip == 0] = pts_bp_rep[pts_bp_ip == 0]
+
+            # keep track of the manually corrected points
+            mcd = (
+                image_pose.dynamic_pose.manual_correction_dict
+                if image_pose.dynamic_pose is not None
+                else None
+            )
+            image_pose.dynamic_pose = DynamicPose(
+                pts_bp_ip, image_pose.state.img_id, joint_id=None, manual_correction=mcd
+            )
+
+        # save down corrections as training if any priors were given
+        print("Saving with prior")
+        for ip in self.image_pose_list_bot:
+            if ip.dynamic_pose.manual_correction_dict != dict():
+                import pdb
+                pdb.set_trace()
+            ip.save_correction()
+
+        print("Finished Belief Propagation Right")
+
     def solve_bp(self, save_correction=False):
         if not (
             self.state.mode == Mode.CORRECTION
@@ -188,9 +241,9 @@ class DrosophAnnot():
                         (ip.cam.cam_id, joint_id, pt2d / config["image_shape"])
                     )
         #print("Prior for BP: {}".format(prior))
-		pts_bp = self.state.camNetLeft.solveBP( #why is it only solving BP for the left camnet??
-			self.state.img_id, config["bone_param"], prior=prior
-		)
+        pts_bp = self.state.camNetLeft.solveBP( #why is it only solving BP for the left camnet??
+            self.state.img_id, config["bone_param"], prior=prior
+        )
         pts_bp = np.array(pts_bp)
 
         # set points which are not estimated by bp
@@ -277,7 +330,7 @@ class DrosophAnnot():
                 self.solve_bp()
 
             if self.camNetRight.has_calibration():
-                self.solve_bp()
+                self.solve_bp_right()
 
 
     def set_heatmap_joint_id(self, joint_id):
