@@ -170,7 +170,7 @@ class DrosophAnnot():
         if self.state.mode == Mode.CORRECTION:
             self.set_pose(self.state.img_id)
 
-    def solve_bp(self, save_correction=False, side="left"):
+    def solve_bp(self, save_correction=False):
         if not (
             self.state.mode == Mode.CORRECTION
             and self.state.solve_bp
@@ -274,10 +274,10 @@ class DrosophAnnot():
                 )
 
             if self.camNetLeft.has_calibration():
-                self.solve_bp(side="left")
+                self.solve_bp()
 
             if self.camNetRight.has_calibration():
-                self.solve_bp(side="right") 
+                self.solve_bp()
 
 
     def set_heatmap_joint_id(self, joint_id):
