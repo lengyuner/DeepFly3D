@@ -170,7 +170,7 @@ class DrosophAnnot():
         if self.state.mode == Mode.CORRECTION:
             self.set_pose(self.state.img_id)
 
-    def solve_bp(self, save_correction=False, side="left"):
+    def solve_bp(self, side="left"):
         if not (
             self.state.mode == Mode.CORRECTION
             and self.state.solve_bp
@@ -224,7 +224,6 @@ class DrosophAnnot():
             )
 
         # save down corrections as training if any priors were given
-#        if prior and save_correction:
         print("Saving with prior")
         for ip in image_pose_list_this_side:
             ip.save_correction()
