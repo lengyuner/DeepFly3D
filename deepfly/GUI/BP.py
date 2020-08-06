@@ -42,11 +42,7 @@ class LegBP:
 
     def generate_proposals(self, num_peak, prior=None):
         for j in self.jointbp:
-            cam_id_list_seeing_joint = [
-                cam_id
-                for cam_id in self.cam_id_list
-                if config["skeleton"].camera_see_joint(cam_id, j.j_id)
-            ]
+            cam_id_list_seeing_joint = [cam_id for cam_id in self.cam_id_list if config["skeleton"].camera_see_joint(cam_id, j.j_id)]
             p2d_list = []
             # find 2d proposals for a given joint for each camera, by taking local maximums
             for cam in self.camera_network:

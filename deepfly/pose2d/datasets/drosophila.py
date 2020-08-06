@@ -406,6 +406,8 @@ class Drosophila(data.Dataset):
         if flip:
             img_orig = torch.from_numpy(fliplr(img_orig.numpy())).float()
             pts = shufflelr(pts, width=img_orig.size(2), dataset="drosophila")
+        print("img_orig       " + str(type(img_orig)))
+        print("self.img_res   " + str(self.img_res))
         img_norm = im_to_torch(scipy.misc.imresize(img_orig, self.img_res))
 
         # Generate ground truth heatmap
