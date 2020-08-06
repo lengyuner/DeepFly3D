@@ -415,7 +415,7 @@ class ImagePose():
 
     def save_correction(self, thr=30):
         points2d_prediction = self.cam.get_points2d(self.state.img_id)
-        points2d_correction = self.dynamic_pose.points2d
+        points2d_correction = self.dynamic_pose.points2d#this array seems to have erronious changes made in the BP process for cameras 4,5,6. I'm not sure why
 
         err = np.abs(points2d_correction - points2d_prediction)
         check_joint_id_list = [
@@ -427,6 +427,7 @@ class ImagePose():
 
         for j in check_joint_id_list:
             if np.any(err[j] > thr):
+                #TODO could fix the error where BP changes extra points for cameras 4,5,6 here with a dirty hack by making it only write the specific points where 'error > threshold', which it probably should do in the first place. but i suspect there is a deeper problem in the BP code itself
                 err_max = np.max(err[check_joint_id_list])
                 joint_id, ax = np.where(err == err_max)
 
