@@ -46,13 +46,21 @@ class Annotator(QWidget):
 		self.camera = 0
 		self.points_visibility = True
 
-		self.data = np.load(glob.glob(os.path.join(self.folder, "df3d", "preds_*"))[0], allow_pickle=True)
-		self.data[:,:,:,0] *= 960 #scale to aspect ratio of image
-		self.data[:,:,:,1] *= 480
+		#self.preds = np.load(glob.glob(os.path.join(self.folder, "df3d", "pose_result*"))[0], allow_pickle=True)['points2d']
+		self.preds = np.load(glob.glob(os.path.join(self.folder, "df3d", "preds*"))[0], allow_pickle=True)
+		self.preds[:,:,:,0] *= 960
+		self.preds[:,:,:,1] *= 480
+		self.pose_corr = np.load(glob.glob(os.path.join(self.folder, "df3d", "pose_corr*"))[0], allow_pickle=True)
 
-		self.this_frame_data = self.data[self.camera, self.frame, :, :]
+		for i in range(0, 7):
+			for j in self.pose_corr[i]:
+				self.pose_corr[i][j] = self.reslice_pose_corr_to_shape(self.pose_corr[i][j], i)
+
 
 		self.setGeometry(50, 50, 960, 600)
+		self.bpcheckbox = self.set_bp_checkbox()
+
+		self.this_frame_data = self.get_this_frame_pose_corr_or_pred()
 
 		self.set_radio_buttons()
 		self.set_image()
@@ -81,6 +89,15 @@ class Annotator(QWidget):
 			return True
 
 		return False
+
+	def reslice_pose_corr_to_shape(self, pose_corr_slice, camera):
+		assert camera in [0,1,2,4,5,6]
+		pose_corr_slice[:,0] *= 960
+		pose_corr_slice[:,1] *= 480
+		if camera < 3:
+			return pose_corr_slice[:19, :]
+		elif camera > 3:
+			return pose_corr_slice[19:, :]
 
 	def joint_number_to_colour(self, jid):
 		#leg_colours = dict(front_right="#FF0000", mid_right="#0000FF", back_right="#00FF00", front_left="#FFFF00", mid_left="#FF00FF", back_left="#00FFFF")
@@ -117,6 +134,16 @@ class Annotator(QWidget):
 		lab.setGeometry(210, 540, 100, 30)
 		return box
 
+	def bp_box_toggle(self):
+		self.this_frame_data = self.get_this_frame_pose_corr_or_pred()
+		self.update()
+
+	def set_bp_checkbox(self):
+		box = QCheckBox("Show BP", self)
+		box.setGeometry(400, 540, 100, 30)
+		box.stateChanged.connect(self.bp_box_toggle)
+		return box
+
 	def radio_button_clicked(self):
 		button = self.sender()
 		if button.isChecked():
@@ -134,13 +161,26 @@ class Annotator(QWidget):
 		self.set_image()
 		self.update()
 		
+	def get_this_frame_pose_corr_or_pred(self):
+		if self.bpcheckbox.isChecked():
+			try:
+				return self.pose_corr[self.camera][self.frame]
+			except KeyError:
+				pass
+		assert self.camera in [0,1,2,4,5,6]
+		if self.camera < 3:
+			#return self.preds[self.camera, self.frame, :19, :]
+			return self.preds[self.camera, self.frame, :, :]
+		elif self.camera > 3:
+			return self.preds[self.camera, self.frame, :, :]
+			#return self.preds[self.camera, self.frame, 19:, :]
 
 	def set_image(self):
 		try:
 			self.image = QImage(self.camera_and_frame_to_fname(self.camera, self.frame))
-			self.this_frame_data = self.data[self.camera, self.frame, :, :]
 		except:
 			print("I/O error, likely frame number is too high", file=sys.stderr)
+		self.this_frame_data = self.get_this_frame_pose_corr_or_pred()
 
 	def camera_and_frame_to_fname(self, c, f):
 		return os.path.join(self.folder, "camera_%d_img_%06d.jpg"%(c,f))
@@ -151,9 +191,9 @@ class Annotator(QWidget):
 			painter.setPen(QPen(colour, 1))
 			painter.setBrush(QBrush(colour, Qt.SolidPattern))
 
-			painter.drawEllipse(QPoint(int(point[0]), int(point[1])), 5, 5)
+			painter.drawEllipse(QPoint(round(point[0]), round(point[1])), 5, 5)
 			if self.determine_same_leg(jid, jid+1):
-				painter.drawLine(int(point[0]), int(point[1]), int(self.this_frame_data[jid+1][0]), int(self.this_frame_data[jid+1][1]))
+				painter.drawLine(round(point[0]), round(point[1]), round(self.this_frame_data[jid+1][0]), round(self.this_frame_data[jid+1][1]))
 
 	def next_frame(self):
 		self.frame += 1
