@@ -71,7 +71,8 @@ class Annotator(QWidget):
 		self.update()
 		self.show()
 
-	def determine_same_leg(self, j1, j2):
+	@staticmethod
+	def determine_same_leg(j1, j2):
 		'''	Determines if joint ids j1 and j2 are part of the same leg/structure
 			j2 = j1 + 1
 		'''
@@ -317,17 +318,17 @@ class Annotator(QWidget):
 		radiobutton.setGeometry(700,500,200,20)
 		radiobutton.toggled.connect(self.radio_button_clicked)
 
+if __name__ == "__main__":
+	app = QApplication(sys.argv)
+	fout = sys.stdout
+	try:
+		fout = sys.argv[2]
+		fout = open(fout, "a")
+	except:
+		pass
 
-app = QApplication(sys.argv)
-fout = sys.stdout
-try:
-	fout = sys.argv[2]
-	fout = open(fout, "a")
-except:
-	pass
-
-x = Annotator(sys.argv[1], fout)
-app.exec_()
+	x = Annotator(sys.argv[1], fout)
+	app.exec_()
 
 
 
