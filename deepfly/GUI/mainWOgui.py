@@ -195,11 +195,10 @@ class DrosophAnnot():
             if ip.dynamic_pose is not None:
                 for (joint_id, pt2d) in ip.dynamic_pose.manual_correction_dict.items():
                     prior.append(
-                        (ip.cam.cam_id, joint_id, pt2d / config["image_shape"])
+                        (ip.cam.cam_id, joint_id, pt2d / config["image_shape"])#TODO include "manual corrections" from training set here
                     )
-        #print("Prior for BP: {}".format(prior))
-        pts_bp = cam_net_this_side.solveBP( #why is it only solving BP for the left camnet??
-            self.state.img_id, config["bone_param"], prior=prior
+        pts_bp = cam_net_this_side.solveBP(
+            self.state.img_id, config["bone_param"], prior=prior#priors are an empty list if there are no manual corrections
         )
         pts_bp = np.array(pts_bp)
 
@@ -207,7 +206,9 @@ class DrosophAnnot():
         for idx, image_pose in enumerate(image_pose_list_this_side):
             pts_bp_ip = pts_bp[idx] * config["image_shape"]
             pts_bp_rep = self.state.db.read(image_pose.cam.cam_id, self.state.img_id)
+            print("camera:%d, frame:%d"%(image_pose.cam.cam_id, self.state.img_id))
             if pts_bp_rep is None:
+                # the only time this is NOT None is when a pose_corr*.pkl file exists with corrections already made
                 pts_bp_rep = image_pose.cam.points2d[self.state.img_id, :]
             else:
                 pts_bp_rep *= config["image_shape"]
@@ -413,11 +414,11 @@ class ImagePose():
 
 
     def save_correction(self, thr=30):
-        points2d_prediction = self.cam.get_points2d(self.state.img_id)
-        points2d_correction = self.dynamic_pose.points2d#this array seems to have erronious changes made in the BP process for cameras 4,5,6. I'm not sure why
+        points2d_prediction = self.cam.get_points2d(self.state.img_id) #may need to have .copy() here depending
+        points2d_correction = self.dynamic_pose.points2d
 
         err = np.abs(points2d_correction - points2d_prediction)
-        check_joint_id_list = [
+        check_joint_id_list = [#list of joints that arent ignored and that this camera can see
             j
             for j in range(config["num_joints"])
             if (j not in config["skeleton"].ignore_joint_id)
@@ -429,6 +430,7 @@ class ImagePose():
                 #TODO could fix the error where BP changes extra points for cameras 4,5,6 here with a dirty hack by making it only write the specific points where 'error > threshold', which it probably should do in the first place. but i suspect there is a deeper problem in the BP code itself
                 err_max = np.max(err[check_joint_id_list])
                 joint_id, ax = np.where(err == err_max)
+                #points2d_prediction[err > thr] = points2d_correction[err > thr]
 
                 print(
                     "Saving camera {} with l1 {} on joint {}".format(
@@ -441,9 +443,11 @@ class ImagePose():
                     for j in range(config["skeleton"].num_joints)
                     if not config["skeleton"].camera_see_joint(self.cam.cam_id, j)
                 ]
+                #points2d_prediction[unseen_joints, :] = 0.0
                 points2d_correction[unseen_joints, :] = 0.0
                 self.state.db.write(
                     points2d_correction / config["image_shape"],
+                    #points2d_prediction / config["image_shape"],
                     self.cam.cam_id,
                     self.state.img_id,
                     train=True,
