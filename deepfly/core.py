@@ -520,7 +520,7 @@ class Core:
         self.camNetAll.load_network(calib)
 
     def check_cameras(self):
-        cam_missing = [cam.cam_id for cam in self.camNetAll.cam_list if cam.is_empty()]
+        cam_missing = [cam.cam_id for cam in self.camNetAll.cam_list if cam.cam_id in [0,1,2,4,5,6] and cam.is_empty()]
         assert not cam_missing, "Some cameras are missing: {}".format(cam_missing)
 
     def next_error_in_range(self, range_of_ids):
