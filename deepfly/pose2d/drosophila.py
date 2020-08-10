@@ -133,7 +133,7 @@ def on_cuda(torch_var, *cuda_args, **cuda_kwargs):
 def get_save_path_pred(unlabeled, output_folder):
     unlabeled_replace = unlabeled.replace("/", "-")
     save_path = os.path.join(
-        "/{}".format(unlabeled),
+        "{}".format(unlabeled),
         output_folder,
         "./preds_{}.pkl".format(unlabeled_replace),
     )
@@ -144,7 +144,7 @@ def get_save_path_pred(unlabeled, output_folder):
 def get_save_path_heatmap(unlabeled, output_folder):
     unlabeled_replace = unlabeled.replace("/", "-")
     save_path = os.path.join(
-        "/{}".format(unlabeled),
+        "{}".format(unlabeled),
         output_folder,
         "heatmap_{}.pkl".format(unlabeled_replace),
     )
@@ -245,6 +245,7 @@ def create_dataloader():
     assert (
         len(set.intersection(set(args.train_folder_list), set(test_folder_list))) == 0
     )
+    #should be able to just delete everything above this line
 
     train_loader = DataLoader(
         DrosophilaDataset(
@@ -257,8 +258,8 @@ def create_dataloader():
             hm_res=args.hm_res,
             augmentation=args.augmentation,
             num_classes=args.num_classes,
-            jsonfile=args.json_file,
             output_folder=args.output_folder,
+            csvfile=args.csv_file_train,
         ),
         batch_size=args.train_batch,
         shuffle=True,
@@ -278,8 +279,8 @@ def create_dataloader():
             augmentation=False,
             evaluation=True,
             num_classes=args.num_classes,
-            jsonfile=args.json_file,
             output_folder=args.output_folder,
+            csvfile=args.csv_file_val,
         ),
         batch_size=args.test_batch,
         shuffle=False,
@@ -336,7 +337,7 @@ def main(args):
                 evaluation=True,
                 unlabeled=args.unlabeled,
                 num_classes=args.num_classes,
-                max_img_id=min(get_max_img_id(args.unlabeled), args.max_img_id),
+                max_img_id=get_max_img_id(args.unlabeled),
                 output_folder=args.output_folder,
             ),
             batch_size=args.test_batch,
@@ -350,7 +351,7 @@ def main(args):
             loader,
             args.unlabeled,
             args.output_folder,
-            args.overwrite,
+            True,#args.overwrite,
             num_classes=args.num_classes,
             acc_joints=args.acc_joints,
         )

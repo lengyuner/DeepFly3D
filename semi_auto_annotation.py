@@ -56,6 +56,7 @@ class Annotator(QWidget):
 			for j in self.pose_corr[i]:
 				self.pose_corr[i][j] = self.reslice_pose_corr_to_shape(self.pose_corr[i][j], i)
 
+		self.correct_preds_stripe()
 
 		self.setGeometry(50, 50, 960, 600)
 		self.bpcheckbox = self.set_bp_checkbox()
@@ -90,6 +91,10 @@ class Annotator(QWidget):
 			return True
 
 		return False
+
+	def correct_preds_stripe(self):
+		self.preds[2, :, 16:19, :] = 0
+		self.preds[4, :, 16:19, :] = 0
 
 	def reslice_pose_corr_to_shape(self, pose_corr_slice, camera):
 		assert camera in [0,1,2,4,5,6]
@@ -220,7 +225,10 @@ class Annotator(QWidget):
 		d = self.this_frame_data
 		fpath = self.camera_and_frame_to_fname(self.camera, self.frame)
 		antenna = make_string(d, 15, 16)
-		stripe = make_string(d, 16, 19)
+		if self.camera in [0,1,5,6]:
+			stripe = make_string(d, 16, 19)
+		else:
+			stripe = "000,000,000,000,000,000"
 		front_leg = make_string(d, 0, 5)
 		mid_leg = make_string(d, 5, 10)
 		rear_leg = make_string(d, 10, 15)

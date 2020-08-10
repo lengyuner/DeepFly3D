@@ -49,6 +49,78 @@ def read_json(d, json_path, folder_train_list, cidread2cid):
                 pts = json_data[session_id]["data"][folder_name][image_name]["position"]
                 d[key] = np.array(pts)
 
+def parse_csv_annotations(line):
+    ANTENNA = 1
+    BACK = ANTENNA + 2*1
+    FRONT_LEG = BACK + 2*3
+    MID_LEG = FRONT_LEG + 2*5
+    BACK_LEG = MID_LEG + 2*5
+    cid = int(os.path.basename(line[0])[7])
+    out = np.zeros([40,2])
+    if cid < 3:
+        out[30,:] = [float(line[ANTENNA]), float(line[ANTENNA + 1])]
+
+        out[0,:] = [float(line[FRONT_LEG]), float(line[FRONT_LEG + 1])]
+        out[1,:] = [float(line[FRONT_LEG + 2*1]), float(line[FRONT_LEG + 2*1 + 1])]
+        out[2,:] = [float(line[FRONT_LEG + 2*2]), float(line[FRONT_LEG + 2*2 + 1])]
+        out[3,:] = [float(line[FRONT_LEG + 2*3]), float(line[FRONT_LEG + 2*3 + 1])]
+        out[4,:] = [float(line[FRONT_LEG + 2*4]), float(line[FRONT_LEG + 2*4 + 1])]
+
+        out[5 ,:] = [float(line[MID_LEG]), float(line[MID_LEG + 1])]
+        out[6 ,:] = [float(line[MID_LEG + 2*1]), float(line[MID_LEG + 2*1 + 1])]
+        out[7 ,:] = [float(line[MID_LEG + 2*2]), float(line[MID_LEG + 2*2 + 1])]
+        out[8 ,:] = [float(line[MID_LEG + 2*3]), float(line[MID_LEG + 2*3 + 1])]
+        out[9 ,:] = [float(line[MID_LEG + 2*4]), float(line[MID_LEG + 2*4 + 1])]
+
+        out[10 ,:] = [float(line[BACK_LEG]), float(line[BACK_LEG + 1])]
+        out[11 ,:] = [float(line[BACK_LEG + 2*1]), float(line[BACK_LEG + 2*1 + 1])]
+        out[12 ,:] = [float(line[BACK_LEG + 2*2]), float(line[BACK_LEG + 2*2 + 1])]
+        out[13 ,:] = [float(line[BACK_LEG + 2*3]), float(line[BACK_LEG + 2*3 + 1])]
+        out[14 ,:] = [float(line[BACK_LEG + 2*4]), float(line[BACK_LEG + 2*4 + 1])]
+
+        out[31,:] = [float(line[BACK]), float(line[BACK + 1])]
+        out[32,:] = [float(line[BACK + 2*1]), float(line[BACK + 2*1 + 1])]
+        out[33,:] = [float(line[BACK + 2*2]), float(line[BACK + 2*2 + 1])]
+
+    if cid > 3:
+        out[35,:] = [float(line[ANTENNA]), float(line[ANTENNA + 1])]
+
+        out[15,:] = [float(line[FRONT_LEG]), float(line[FRONT_LEG + 1])]
+        out[16,:] = [float(line[FRONT_LEG + 2*1]), float(line[FRONT_LEG + 2*1 + 1])]
+        out[17,:] = [float(line[FRONT_LEG + 2*2]), float(line[FRONT_LEG + 2*2 + 1])]
+        out[18,:] = [float(line[FRONT_LEG + 2*3]), float(line[FRONT_LEG + 2*3 + 1])]
+        out[19,:] = [float(line[FRONT_LEG + 2*4]), float(line[FRONT_LEG + 2*4 + 1])]
+
+        out[20,:] = [float(line[MID_LEG]), float(line[MID_LEG + 1])]
+        out[21,:] = [float(line[MID_LEG + 2*1]), float(line[MID_LEG + 2*1 + 1])]
+        out[22,:] = [float(line[MID_LEG + 2*2]), float(line[MID_LEG + 2*2 + 1])]
+        out[23,:] = [float(line[MID_LEG + 2*3]), float(line[MID_LEG + 2*3 + 1])]
+        out[24,:] = [float(line[MID_LEG + 2*4]), float(line[MID_LEG + 2*4 + 1])]
+
+        out[25,:] = [float(line[BACK_LEG]), float(line[BACK_LEG + 1])]
+        out[26,:] = [float(line[BACK_LEG + 2*1]), float(line[BACK_LEG + 2*1 + 1])]
+        out[27,:] = [float(line[BACK_LEG + 2*2]), float(line[BACK_LEG + 2*2 + 1])]
+        out[28,:] = [float(line[BACK_LEG + 2*3]), float(line[BACK_LEG + 2*3 + 1])]
+        out[29,:] = [float(line[BACK_LEG + 2*4]), float(line[BACK_LEG + 2*4 + 1])]
+
+        out[36,:] = [float(line[BACK]), float(line[BACK + 1])]
+        out[37,:] = [float(line[BACK + 2*1]), float(line[BACK + 2*1 + 1])]
+        out[38,:] = [float(line[BACK + 2*2]), float(line[BACK + 2*2 + 1])]
+    if cid == 3:
+        pass
+    out[out < 10] = 0
+    out[:,0] = out[:,0] / 960
+    out[:,1] = out[:,1] / 480
+    return out
+
+def read_csv(d, csvfile, cidread2cid):
+    csv = open(csvfile, "r")
+    for line in csv:
+        line = line.split(',')
+        key = (os.path.dirname(line[0]), os.path.basename(line[0]))
+        cidread2cid[key[0]] = np.arange(config["num_cameras"])
+        d[key] = parse_csv_annotations(line)
+
 
 def find_pose_corr_recursively(path):
     return list(glob.glob(os.path.join(path, "./**/pose_corr*.pkl"), recursive=True))
@@ -121,8 +193,9 @@ def normalize_annotations(d, num_classes, cidread2cid_global):
         cid_read, img_id = parse_img_name(k[IMAGE_NAME])
         folder_name = k[FOLDER_NAME]
         cid = cidread2cid_global[folder_name][cid_read] if cid_read != 7 else 3
-        if "annot" in k[FOLDER_NAME]:
-            if cid > 3:  # then right camera
+        if "data" in k[FOLDER_NAME]:
+            #this code doesnt include the stripe?
+            if cid > 3: # then right camera
                 v[:15, :] = v[15:30:]
                 v[15] = v[35]  # 35 is the second antenna
             elif cid < 3:
@@ -130,6 +203,23 @@ def normalize_annotations(d, num_classes, cidread2cid_global):
             else:
                 raise NotImplementedError
             v[16:, :] = 0.0
+            '''
+            import pdb
+            #pdb.set_trace()
+            if cid > 3:  # then right camera
+                v[0:15, :] = v[15:30, :]
+                v[15] = v[35]  # 35 is the second antenna
+                pdb.set_trace()
+                v[16:19] = v[36:39] # stripes
+            elif cid < 3:
+                v[15] = v[30]  # 30 is the first antenna
+                v[16:19] = v[31:34] #stripes
+            elif cid== 3 or cid == 7:
+                pass
+            else:
+                raise NotImplementedError
+            v[19:, :] = 0.0
+            '''
         else:  # then manual correction
             if cid > 3:  # then right camera
                 v[:num_classes, :] = v[num_classes:, :]
@@ -163,6 +253,7 @@ class DrosophilaDataset(data.Dataset):
         num_classes=config["num_predict"],
         max_img_id=None,
         output_folder=None,
+        csvfile=None,
     ):
         self.train = train
         self.data_folder = data_folder  # root image folders
@@ -182,6 +273,7 @@ class DrosophilaDataset(data.Dataset):
         self.manual_path_list = []
         self.session_id_train_list = session_id_train_list
         self.folder_train_list = folder_train_list
+        self.csvfile = csvfile
         if self.output_folder is None:
             raise ValueError(
                 "Please provide an output_folder relative to images folder"
@@ -194,7 +286,15 @@ class DrosophilaDataset(data.Dataset):
 
         self.annotation_dict = dict()
 
-        if isfile(self.json_file) and not self.unlabeled:
+        if self.csvfile and isfile(self.csvfile) and not self.unlabeled:
+            logger.debug("Loading from csv file")
+            print("Loading from csv file")
+            read_csv(
+                self.annotation_dict,
+                self.csvfile,
+                self.cidread2cid
+            )
+        elif isfile(self.json_file) and not self.unlabeled:
             logger.debug("Searching for json file")
             read_json(
                 self.annotation_dict,
@@ -203,7 +303,7 @@ class DrosophilaDataset(data.Dataset):
                 self.cidread2cid,
             )
 
-        if not self.unlabeled and self.train and self.manual_path_list:
+        if not self.unlabeled and self.train and not self.csvfile and self.manual_path_list:
             logger.debug("Searching for manual corrections")
             read_manual_corrections(
                 self.annotation_dict,
