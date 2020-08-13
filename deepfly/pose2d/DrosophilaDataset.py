@@ -86,7 +86,7 @@ def parse_csv_annotations(line):
         out[33,:] = [float(line[BACK + 2*2]), float(line[BACK + 2*2 + 1])]
 
     if cid > 3:
-        out[35,:] = [float(line[ANTENNA]), float(line[ANTENNA + 1])]
+        out[35,:] = [float(line[ANTENNA]), float(line[ANTENNA + 1])]#Not using 34 here
 
         out[15,:] = [float(line[FRONT_LEG]), float(line[FRONT_LEG + 1])]
         out[16,:] = [float(line[FRONT_LEG + 2*1]), float(line[FRONT_LEG + 2*1 + 1])]
@@ -184,6 +184,8 @@ def read_unlabeled_folder(d, unlabeled, output_folder, cidread2cid_global, max_i
                 continue
             print("adding image: %s to annotation dict"%(image_name_jpg))
             d[key] = np.zeros(shape=(config["skeleton"].num_joints, 2))
+            #TODO in earlier versions this was a [40,2] array instead of a [38,2] array. why the change? this impacts normalize_annotations()
+            #Seems to be correctable
 
 
 def normalize_annotations(d, num_classes, cidread2cid_global):
@@ -199,6 +201,7 @@ def normalize_annotations(d, num_classes, cidread2cid_global):
         cid = cidread2cid_global[folder_name][cid_read] if cid_read != 7 else 3
         if "data" in k[FOLDER_NAME]:
             #this code doesnt include the stripe?
+            #TODO find out if there are necessary changes here
             if cid > 3: # then right camera
                 v[:15, :] = v[15:30:]
                 v[15] = v[35]  # 35 is the second antenna
