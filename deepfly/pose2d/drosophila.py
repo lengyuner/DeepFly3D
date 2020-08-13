@@ -337,7 +337,7 @@ def main(args):
                 evaluation=True,
                 unlabeled=args.unlabeled,
                 num_classes=args.num_classes,
-                max_img_id=get_max_img_id(args.unlabeled),
+                max_img_id=min(get_max_img_id(args.unlabeled), args.max_img_id),
                 output_folder=args.output_folder,
             ),
             batch_size=args.test_batch,
