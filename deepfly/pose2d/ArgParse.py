@@ -94,6 +94,13 @@ def add_arguments(parser):
         help="path to save checkpoint (default: checkpoint)",
     )
     parser.add_argument(
+        "--max-img-id",
+        default=99999,
+        dest="max_img_id",
+        type=int,
+        help="Maximum frame number to run to",
+    )
+    parser.add_argument(
         "--csv-file-train",
         default=None,
         dest="csv_file_train",
