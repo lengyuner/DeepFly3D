@@ -14,6 +14,9 @@ import torch.utils.data as data
 import deepfly.logger as logger
 from deepfly.Config import config
 
+from PIL import Image
+import skimage
+
 # from deepfly.os_util import *
 from deepfly.os_util import constr_img_name, parse_img_name, read_camera_order
 from deepfly.pose2d.utils.transforms import (
@@ -179,6 +182,7 @@ def read_unlabeled_folder(d, unlabeled, output_folder, cidread2cid_global, max_i
                 continue
             if max_img_id is not None and img_id > max_img_id:
                 continue
+            print("adding image: %s to annotation dict"%(image_name_jpg))
             d[key] = np.zeros(shape=(config["skeleton"].num_joints, 2))
 
 
@@ -445,7 +449,9 @@ class DrosophilaDataset(data.Dataset):
         if flip:
             img_orig = torch.from_numpy(fliplr(img_orig.numpy())).float()
             pts = shufflelr(pts, width=img_orig.size(2), dataset="drosophila")
-        img_norm = im_to_torch(scipy.misc.imresize(img_orig, self.img_res))
+        #img_norm = im_to_torch(scipy.misc.imresize(img_orig, self.img_res))
+        #img_norm = np.array(Image.fromarray(img_orig).resize((self.img_res[1], self.img_res[0])))
+        img_norm = im_to_torch(skimage.transform.resize(img_orig, self.img_res))
 
         # Generate ground truth heatmap
         tpts = pts.clone()
