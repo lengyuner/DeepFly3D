@@ -2,6 +2,8 @@ from __future__ import absolute_import
 
 import random
 import imageio
+from PIL import Image
+import skimage
 
 import cv2
 import numpy as np
@@ -39,12 +41,15 @@ def load_image(img_path):
 
 
 def save_image(img_path, img):
-    scipy.misc.imsave(img_path, img)
+    #scipy.misc.imsave(img_path, img)
+    imageio.imwrite(img_path, img)
 
 
 def resize(img, owidth, oheight):
     img = im_to_numpy(img)
-    img = scipy.misc.imresize(img, (oheight, owidth))
+    #img = scipy.misc.imresize(img, (oheight, owidth))
+    #img = np.array(Image.fromarray(img).resize((owidth, oheight)))
+    img = skimage.transform.resize(img, (oheight, owidth))
     img = im_to_torch(img)
     return img
 
@@ -201,12 +206,16 @@ def sample_with_heatmap(inp, out, num_rows=2, parts_to_show=None):
     full_img = np.zeros((img.shape[0], size * (num_cols + num_rows), 3), np.uint8)
     full_img[: img.shape[0], : img.shape[1]] = img
 
-    inp_small = scipy.misc.imresize(img, [size, size])
+    #inp_small = scipy.misc.imresize(img, [size, size])
+    #inp_small = np.array(Image.fromarray(img).resize((size, size)))
+    inp_small = skimage.transform.resize(img, [size, size])
 
     # Set up heatmap display for each part
     for i, part in enumerate(parts_to_show):
         part_idx = part
-        out_resized = scipy.misc.imresize(out[part_idx], [size, size])
+        #out_resized = scipy.misc.imresize(out[part_idx], [size, size])
+        #out_resized = np.array(Image.fromarray(out[part_idx]).resize((size, size)))
+        out_resized = skimage.transform.resize(out[part_idx], [size, size])
         out_resized = out_resized.astype(float) / 255
         out_img = inp_small.copy() * 0.3
         color_hm = color_heatmap(out_resized)
