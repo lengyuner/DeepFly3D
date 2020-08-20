@@ -16,6 +16,7 @@ from deepfly.cv_util import triangulate_linear
 from deepfly.os_util import read_calib, read_camera_order
 from deepfly.os_util import parse_img_name
 import json
+import deepfly.optimise_triangulation as optimise_triangulation
 
 
 def load_pred_from_json(path_json, folder_name, num_images):
@@ -196,32 +197,42 @@ class CameraNetwork:
     def has_heatmap(self):
         return self.cam_list[0].hm is not None
 
-    def triangulate(self, cam_id_list=None):
+    def triangulate(self, cam_id_list=None, anipose_optimise_3d=False):
         assert self.cam_list
 
-        if cam_id_list is None:
-            cam_id_list = list(range(self.num_cameras))
-        points2d_shape = self.cam_list[0].points2d.shape
-        self.points3d_m = np.zeros(
-            shape=(points2d_shape[0], points2d_shape[1], 3), dtype=np.float
-        )
-        data_shape = self.cam_list[0].points2d.shape
-        for img_id in range(data_shape[0]):
-            for j_id in range(data_shape[1]):
-                cam_list_iter = list()
-                points2d_iter = list()
-                for cam in [self.cam_list[cam_idx] for cam_idx in cam_id_list]:
-                    if np.any(cam[img_id, j_id, :] == 0):
-                        continue
-                    if not config["skeleton"].camera_see_joint(cam.cam_id, j_id):
-                        continue
-                    cam_list_iter.append(cam)
-                    points2d_iter.append(cam[img_id, j_id, :])
+        if True:
+            if cam_id_list is None:
+                cam_id_list = list(range(self.num_cameras))
+            points2d_shape = self.cam_list[0].points2d.shape
+            self.points3d_m = np.zeros(
+                shape=(points2d_shape[0], points2d_shape[1], 3), dtype=np.float
+            )
+            data_shape = self.cam_list[0].points2d.shape
+            for img_id in range(data_shape[0]):
+                for j_id in range(data_shape[1]):
+                    cam_list_iter = list()
+                    points2d_iter = list()
+                    for cam in [self.cam_list[cam_idx] for cam_idx in cam_id_list]:
+                        if np.any(cam[img_id, j_id, :] == 0):
+                            continue
+                        if not config["skeleton"].camera_see_joint(cam.cam_id, j_id):
+                            #this line removes the cameras that can't see this joint
+                            continue
+                        cam_list_iter.append(cam)
+                        points2d_iter.append(cam[img_id, j_id, :])
 
-                if len(cam_list_iter) >= 2:
-                    self.points3d_m[img_id, j_id, :] = triangulate_linear(
-                        cam_list_iter, points2d_iter
-                    )
+                    if len(cam_list_iter) >= 2:
+                        #self.points3d_m is 1400,38,3
+                        #cam_list_iter is 3 cameras
+                        #points2d_iter is 3 2d points
+                        self.points3d_m[img_id, j_id, :] = triangulate_linear(
+                            cam_list_iter, points2d_iter
+                        )
+        if anipose_optimise_3d:
+            #add in spatio-temporal filtering/triangulation optimisation here
+            anipose_shape_points2d = optimise_triangulation.reshape_2d(self.cam_list)
+            #self.points3d_m = optimise_triangulation.anipose_3d_triangulation(self.cam_list)
+            self.points3d_m = optimise_triangulation.optimise_3d(self.cam_list, anipose_shape_points2d, self.points3d_m)
 
     def reprojection_error(self, cam_indices=None, ignore_joint_list=None):
         if ignore_joint_list is None:
