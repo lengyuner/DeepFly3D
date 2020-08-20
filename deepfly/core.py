@@ -1,7 +1,9 @@
 import math  # inf
 import os.path
+import os
 import pickle
 import re
+import glob
 
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
@@ -198,6 +200,10 @@ class Core:
         Uses the images between min_img_id and max_img_id for the calibration.
         """
 
+        if os.path.isfile(os.path.join(self.output_folder, "calib.pkl")):
+            self.set_cameras()
+            return
+
         print(f"Calibration considering frames between {min_img_id}:{max_img_id}")
         calib = read_calib(config["calib_fine"])
         assert calib is not None
@@ -227,9 +233,9 @@ class Core:
         for cam in self.camNetAll.cam_list:
             cam.points2d = cam.points2d[min_img_id:max_img_id, :]
 
-        self.camNetLeft.triangulate()
+        self.camNetLeft.triangulate(anipose_optimise_3d=True)
         self.camNetLeft.bundle_adjust(cam_id_list=(0, 1, 2))
-        self.camNetRight.triangulate()
+        self.camNetRight.triangulate(anipose_optimise_3d=True)
         self.camNetRight.bundle_adjust(cam_id_list=(0, 1, 2))
 
         # put old values back
@@ -368,20 +374,29 @@ class Core:
         Indexing is as follows:
         array[image_id][joint_id] = (x, y, z)
         """
-        camNetL = self.camNetLeft
-        camNetR = self.camNetRight
 
-        camNetL.triangulate()
-        camNetL.bundle_adjust(cam_id_list=(0, 1, 2))
+        print("OUTPUT FOLDER:%s"%(self.output_folder))
+        if os.path.isfile(glob.glob(os.path.join(self.output_folder, "pose_result*"))[0]):
+            points3d_m = np.load(glob.glob(os.path.join(self.output_folder, "pose_result*"))[0], allow_pickle=True)['points3d']
+            points3d_m = procrustes_seperate(points3d_m)
+        else:
+            camNetL = self.camNetLeft
+            camNetR = self.camNetRight
 
-        camNetR.triangulate()
-        camNetR.bundle_adjust(cam_id_list=(0, 1, 2))
+            camNetL.triangulate()
+            camNetL.bundle_adjust(cam_id_list=(0, 1, 2))
 
-        self.camNetAll.triangulate()
-        points3d_m = self.camNetAll.points3d_m.copy()
-        points3d_m = procrustes_seperate(points3d_m)
-        points3d_m = normalize_pose_3d(points3d_m, rotate=True)
-        points3d_m = filter_batch(points3d_m)
+            camNetR.triangulate()
+            camNetR.bundle_adjust(cam_id_list=(0, 1, 2))
+
+            #self.camNetAll.triangulate()
+            print("3d triangulation on all cameras with anipose optim")
+            self.camNetAll.triangulate(anipose_optimise_3d=True)
+            points3d_m = self.camNetAll.points3d_m.copy()
+            points3d_m = procrustes_seperate(points3d_m)
+
+        #points3d_m = normalize_pose_3d(points3d_m, rotate=True)
+        #points3d_m = filter_batch(points3d_m)
         return points3d_m
 
     def save_corrections(self):
@@ -413,11 +428,12 @@ class Core:
         dict_merge["points2d"] = pts2d
 
         if self.camNetLeft.has_calibration() and self.camNetLeft.has_pose():
-            self.camNetAll.triangulate()
+            self.camNetAll.triangulate(anipose_optimise_3d=True)
             pts3d = self.camNetAll.points3d_m
             if config["procrustes_apply"]:
-                print("Applying Procrustes on 3D Points")
-                pts3d = procrustes_seperate(pts3d)
+                pass
+                #print("Applying Procrustes on 3D Points")
+                #pts3d = procrustes_seperate(pts3d) # removing procrustes to see what happens
             dict_merge["points3d"] = pts3d
         else:
             logger.debug("Triangulation skipped.")
