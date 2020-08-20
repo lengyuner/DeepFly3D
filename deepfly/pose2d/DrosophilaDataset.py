@@ -211,12 +211,9 @@ def normalize_annotations(d, num_classes, cidread2cid_global):
                 raise NotImplementedError
             v[16:, :] = 0.0
             '''
-            import pdb
-            #pdb.set_trace()
             if cid > 3:  # then right camera
                 v[0:15, :] = v[15:30, :]
                 v[15] = v[35]  # 35 is the second antenna
-                pdb.set_trace()
                 v[16:19] = v[36:39] # stripes
             elif cid < 3:
                 v[15] = v[30]  # 30 is the first antenna
