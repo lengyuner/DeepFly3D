@@ -200,7 +200,7 @@ class CameraNetwork:
     def triangulate(self, cam_id_list=None, anipose_optimise_3d=False):
         assert self.cam_list
 
-        if True:
+        if not anipose_optimise_3d:
             if cam_id_list is None:
                 cam_id_list = list(range(self.num_cameras))
             points2d_shape = self.cam_list[0].points2d.shape
@@ -229,10 +229,17 @@ class CameraNetwork:
                             cam_list_iter, points2d_iter
                         )
         if anipose_optimise_3d:
+            assert len(self.cam_list) == 7
+            assert np.max(self.cam_list[3].points2d) == 0. # camera 3 has no information
+            cam_list_copy = self.cam_list.copy()
+            del cam_list_copy[3] # remove camera 3 (not strictly necessary if accomedated for, but easier to do it here)
+
+            # anipose 3d triangulation
+            self.points3d_m = optimise_triangulation.anipose_3d_triangulation(cam_list_copy)
+
             #add in spatio-temporal filtering/triangulation optimisation here
-            anipose_shape_points2d = optimise_triangulation.reshape_2d(self.cam_list)
-            #self.points3d_m = optimise_triangulation.anipose_3d_triangulation(self.cam_list)
-            self.points3d_m = optimise_triangulation.optimise_3d(self.cam_list, anipose_shape_points2d, self.points3d_m)
+            anipose_shape_points2d = optimise_triangulation.reshape_2d(cam_list_copy)
+            self.points3d_m = optimise_triangulation.optimise_3d(cam_list_copy, anipose_shape_points2d, self.points3d_m)
 
     def reprojection_error(self, cam_indices=None, ignore_joint_list=None):
         if ignore_joint_list is None:
