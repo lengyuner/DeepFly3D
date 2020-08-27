@@ -233,9 +233,9 @@ class Core:
         for cam in self.camNetAll.cam_list:
             cam.points2d = cam.points2d[min_img_id:max_img_id, :]
 
-        self.camNetLeft.triangulate(anipose_optimise_3d=True)
+        self.camNetLeft.triangulate(anipose_optimise_3d=False)
         self.camNetLeft.bundle_adjust(cam_id_list=(0, 1, 2))
-        self.camNetRight.triangulate(anipose_optimise_3d=True)
+        self.camNetRight.triangulate(anipose_optimise_3d=False)
         self.camNetRight.bundle_adjust(cam_id_list=(0, 1, 2))
 
         # put old values back
@@ -395,7 +395,7 @@ class Core:
             points3d_m = self.camNetAll.points3d_m.copy()
             points3d_m = procrustes_seperate(points3d_m)
 
-        #points3d_m = normalize_pose_3d(points3d_m, rotate=True)
+        points3d_m = normalize_pose_3d(points3d_m, rotate=True)
         #points3d_m = filter_batch(points3d_m)
         return points3d_m
 
@@ -431,9 +431,9 @@ class Core:
             self.camNetAll.triangulate(anipose_optimise_3d=True)
             pts3d = self.camNetAll.points3d_m
             if config["procrustes_apply"]:
-                pass
-                #print("Applying Procrustes on 3D Points")
-                #pts3d = procrustes_seperate(pts3d) # removing procrustes to see what happens
+                print("Applying Procrustes on 3D Points")
+                pts3d = procrustes_seperate(pts3d) # removing procrustes to see what happens
+                pts3d = normalize_pose_3d(pts3d, rotate=True) #added in confused as to why not in from the start
             dict_merge["points3d"] = pts3d
         else:
             logger.debug("Triangulation skipped.")
