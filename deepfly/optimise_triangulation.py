@@ -11,6 +11,8 @@ def reshape_2d(cameras):
 	N: number of frames
 	J: number of joints
 	K: number of constraints
+
+	0. values are replaced with np.nan
 	'''
 
 	shape_2d = cameras[0].points2d.shape
@@ -18,8 +20,7 @@ def reshape_2d(cameras):
 	for i, camera in enumerate(cameras, start=0):
 		out[i, :, :, :] = camera.points2d.copy()
 
-	out[:, :, :, 0] /= 960 # potentially need to normalise the data to between 0 and 1
-	out[:, :, :, 1] /= 480
+	out[out == 0.] == np.nan
 
 	return out
 
@@ -49,17 +50,27 @@ def anipose_3d_triangulation(cam_list):
 	'''	Uses the anipose 3d simple triangulation
 		camlist is a list of deepfly3d cameras.
 	'''
-	del cam_list[3]
+	assert len(cam_list) == 6
 	cgroup = make_camera_group(cam_list)
-
 	shape = cam_list[0].points2d.shape
+	pts2d = np.empty([6, shape[0], shape[1], 2]) # (6, 1400, 38, 2)
+	for i, cam in enumerate(cam_list, start=0):
+		pts2d[i, :, :, :] = cam.points2d.copy()
+	pts2d[pts2d == 0.] = np.nan
+	pts2d_flat = pts2d.reshape(len(cam_list), -1, 2)
+	pts3d_flat = cgroup.triangulate(pts2d_flat)
+	pts3d = pts3d_flat.reshape(shape[0], 38, 3)
+	assert not np.any(pts3d == np.nan), "Tracking failure for at least one point"
+
+	'''
 	pts3d = np.empty([shape[0], shape[1], 3])
 	for i in range(0, shape[0]): # 0-1399
 		points = np.empty([len(cam_list), shape[1], 2])
 		for j, cam in enumerate(cam_list, start=0):
-			points[j, :, :] = cam.points2d[i, :, :] / [960, 480]
+			points[j, :, :] = cam.points2d[i, :, :]# / [960, 480]
 
 		pts3d[i, :, :] = cgroup.triangulate(points)
+	'''
 
 	return pts3d
 
@@ -90,17 +101,24 @@ def optimise_3d(cameras, points2d, points3d):
 	Returns optimised 3d points
 	'''
 	#Setup the anipose data structures appropriately
-	#assert len(cameras) == 3 || 6
-	#assert constraints about points2d
-	#assert constraints about points3d
+	assert len(cameras) == 6
+	shape_2d = points2d.shape
+	shape_3d = points3d.shape
+	assert len(cameras) == shape_2d[0], "number of cameras in camera list differs from number of cameras in data"
+	assert shape_2d[1] == shape_3d[0], "number of 2d frames differs from number of 3d frames"
+	assert shape_2d[2] == shape_3d[1], "number of joints differs between 2d and 3d data"
+	assert shape_2d[3] == 2
+	assert shape_3d[2] == 3
+	assert not np.any(points3d == np.nan), "NaN values in 3d points: 2d tracking errors resulted in incomplete 3d triangulation"
+	points2d[points2d == 0.] = np.nan
 
-	#TODO check the format of the 2d and 3d points
 	#TODO make sure theres nothing going wrong with the cordinate system of the 3d points
 	#TODO look at anipose/triangulate.triangulate, determine what things done before and after the cgroup.optim_points call are important
 
 	cgroup = make_camera_group(cameras)
 
 	constraints = get_constraints()
+	constraints_weak = get_constraints()
 	
 	#TODO add in other paramaters to the function call
 	optimised_points3d = cgroup.optim_points(points2d, points3d, constraints=constraints, verbose=True)
