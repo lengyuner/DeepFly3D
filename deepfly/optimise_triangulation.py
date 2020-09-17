@@ -1,6 +1,7 @@
 import deepfly.anipose_cameras as anipose_cameras
 import numpy as np
 import pdb
+from deepfly.Config import config
 
 def reshape_2d(cameras):
 	'''
@@ -51,26 +52,36 @@ def anipose_3d_triangulation(cam_list):
 		camlist is a list of deepfly3d cameras.
 	'''
 	assert len(cam_list) == 6
-	cgroup = make_camera_group(cam_list)
-	shape = cam_list[0].points2d.shape
+	cgroup = make_camera_group(cam_list) # ordering of cameras in cgroup should be same as in deepfly
+	shape = cam_list[0].points2d.shape # 1400, 38, 2
 	pts2d = np.empty([6, shape[0], shape[1], 2]) # (6, 1400, 38, 2)
 	for i, cam in enumerate(cam_list, start=0):
 		pts2d[i, :, :, :] = cam.points2d.copy()
 	pts2d[pts2d == 0.] = np.nan
+	pts3d = np.empty([shape[0], shape[1], 3]) # 1400, 38, 3
+	'''
+	for i in range(0, shape[0]): # 0-1399
+		for j in range(0, shape[1]): # 0-37
+			# if camera can see joint
+			pdb.set_trace()
+			cam_list_iter = []
+			pts2d_for_triangulate = []
+			for k, camera in enumerate(cgroup.cameras, start=0):
+				if not config["skeleton"].camera_see_joint(k, j):
+					# remove cameras that cant see the joint
+					continue
+				cam_list_iter.append(camera)
+			pts2d_for_triangulation = pts2d[:, i, j, :]
+			pts3d[i, j, :] = cgroup.triangulate(pts2d_for_triangulation)
+			reprojerr = cgroup.reprojection_error(pts3d[i,j,:], pts2d_for_triangulation, mean=True)
+	'''
 	pts2d_flat = pts2d.reshape(len(cam_list), -1, 2)
 	pts3d_flat = cgroup.triangulate(pts2d_flat)
+	reprojerr_flat = cgroup.reprojection_error(pts3d_flat, pts2d_flat, mean=True)
 	pts3d = pts3d_flat.reshape(shape[0], 38, 3)
+	reprojerr = reprojerr_flat.reshape(shape[0], 38)
+
 	assert not np.any(pts3d == np.nan), "Tracking failure for at least one point"
-
-	'''
-	pts3d = np.empty([shape[0], shape[1], 3])
-	for i in range(0, shape[0]): # 0-1399
-		points = np.empty([len(cam_list), shape[1], 2])
-		for j, cam in enumerate(cam_list, start=0):
-			points[j, :, :] = cam.points2d[i, :, :]# / [960, 480]
-
-		pts3d[i, :, :] = cgroup.triangulate(points)
-	'''
 
 	return pts3d
 
