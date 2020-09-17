@@ -113,6 +113,10 @@ class Camera:
             points2d = points2d[np.newaxis, :]
         if points2d.shape[1] != 2:
             points2d = points2d.transpose()
+        if np.any(points2d > [960, 480]):
+            pass
+            #import pdb
+            #pdb.set_trace()
         return points2d
 
     def reprojection_error(self, points3d, mask):
@@ -121,6 +125,11 @@ class Camera:
         err_list = (
             points2d.reshape(-1, 2) - self.project(points3d).reshape(-1, 2)
         ).ravel()
+        return np.mean(np.abs(err_list)), np.array(err_list)
+
+    def reprojection_error_given(self, points3d, points2d):
+        assert points3d.shape[0] == points2d.shape[0]
+        err_list = (points2d.reshape(-1, 2) - self.project(points3d).reshape(-1, 2)).ravel()
         return np.mean(np.abs(err_list)), np.array(err_list)
 
     #########################
