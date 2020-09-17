@@ -378,7 +378,7 @@ class Core:
         print("OUTPUT FOLDER:%s"%(self.output_folder))
         if os.path.isfile(glob.glob(os.path.join(self.output_folder, "pose_result*"))[0]):
             points3d_m = np.load(glob.glob(os.path.join(self.output_folder, "pose_result*"))[0], allow_pickle=True)['points3d']
-            points3d_m = procrustes_seperate(points3d_m)
+            #points3d_m = procrustes_seperate(points3d_m)
         else:
             camNetL = self.camNetLeft
             camNetR = self.camNetRight
@@ -428,12 +428,13 @@ class Core:
         dict_merge["points2d"] = pts2d
 
         if self.camNetLeft.has_calibration() and self.camNetLeft.has_pose():
-            self.camNetAll.triangulate(anipose_optimise_3d=True)
+            self.camNetAll.triangulate(anipose_optimise_3d=True, reprojection_error_optimisation=True)
             pts3d = self.camNetAll.points3d_m
             if config["procrustes_apply"]:
-                print("Applying Procrustes on 3D Points")
-                pts3d = procrustes_seperate(pts3d) # removing procrustes to see what happens
-                pts3d = normalize_pose_3d(pts3d, rotate=True) #added in confused as to why not in from the start
+                pass
+                #print("Applying Procrustes on 3D Points")
+                #pts3d = procrustes_seperate(pts3d) # removing procrustes to see what happens
+                #pts3d = normalize_pose_3d(pts3d, rotate=True) #added in confused as to why not in from the start
             dict_merge["points3d"] = pts3d
         else:
             logger.debug("Triangulation skipped.")
@@ -447,6 +448,8 @@ class Core:
         )
         pickle.dump(dict_merge, open(save_path, "wb"))
         print(f"Saved the pose at: {save_path}")
+        self.save_calibration()
+        print("Saved calibration")
 
     # -------------------------------------------------------------------------
     # private helper methods
