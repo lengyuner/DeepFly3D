@@ -4,6 +4,7 @@ import os
 import pickle
 import re
 import glob
+import pdb
 
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
@@ -217,6 +218,7 @@ class Core:
             dtype=float,
         )
         for cam_id in range(config["num_cameras"]):
+            pdb.set_trace()
             pts2d[cam_id, :] = self.camNetAll.cam_list[cam_id].points2d.copy()
 
         # ugly hack to temporarly incorporate manual corrections to calibration
@@ -428,13 +430,13 @@ class Core:
         dict_merge["points2d"] = pts2d
 
         if self.camNetLeft.has_calibration() and self.camNetLeft.has_pose():
-            self.camNetAll.triangulate(anipose_optimise_3d=True, reprojection_error_optimisation=True)
+            self.camNetAll.triangulate(anipose_optimise_3d=False, reprojection_error_optimisation=True, graph_reprojection_errors=True)
             pts3d = self.camNetAll.points3d_m
             if config["procrustes_apply"]:
                 pass
                 #print("Applying Procrustes on 3D Points")
-                #pts3d = procrustes_seperate(pts3d) # removing procrustes to see what happens
-                #pts3d = normalize_pose_3d(pts3d, rotate=True) #added in confused as to why not in from the start
+                pts3d = procrustes_seperate(pts3d) # removing procrustes to see what happens
+                pts3d = normalize_pose_3d(pts3d, rotate=True) #added in confused as to why not in from the start
             dict_merge["points3d"] = pts3d
         else:
             logger.debug("Triangulation skipped.")
