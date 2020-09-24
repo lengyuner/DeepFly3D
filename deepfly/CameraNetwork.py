@@ -3,6 +3,7 @@ import glob
 import os
 import pickle
 import itertools
+import pdb
 
 import cv2
 import numpy as np
@@ -198,7 +199,7 @@ class CameraNetwork:
     def has_heatmap(self):
         return self.cam_list[0].hm is not None
 
-    def triangulate(self, cam_id_list=None, anipose_optimise_3d=False, reprojection_error_optimisation=False):
+    def triangulate(self, cam_id_list=None, anipose_optimise_3d=False, reprojection_error_optimisation=False, graph_reprojection_errors=False):
         assert self.cam_list
         count = 0
 
@@ -211,6 +212,8 @@ class CameraNetwork:
             )
             data_shape = self.cam_list[0].points2d.shape
             reproj_metrics_list = []
+            reprojection_error_distance = np.zeros([7, data_shape[0], data_shape[1]])
+            reprojection_error_log = open(os.path.join(self.folder, 'df3d', 'reprojection_errors.log'), "w")
             for img_id in range(data_shape[0]):
                 for j_id in range(data_shape[1]):
                     cam_list_iter = list()
@@ -240,39 +243,64 @@ class CameraNetwork:
                                 full_errs.append(full_err)
                                 distance_errs.append(np.linalg.norm(full_err[1]))
                                 squares_errs.append(full_err[1][0] ** 2 + full_err[1][1] ** 2)
-                            err = np.mean(errs) # TODO I really dont think that using the mean reprojection error is a good idea
-                            if err > 30 and len(cam_list_iter) > 2 and j_id in [i for i in range(0,15)] + [i for i in range(19, 34)]:
+                                reprojection_error_distance[c.cam_id, img_id, j_id] = np.linalg.norm(full_err[1])
+                            err = np.mean(distance_errs) # TODO I really dont think that using the mean reprojection error is a good idea
+                            if err > 25 and len(cam_list_iter) > 2 and j_id in [i for i in range(0,15)] + [i for i in range(19, 34)]: # 30 -> 0
+                                #print("reproj optim on frame %d"%(img_id))
+                                assert len(cam_list_iter) == 3
+                                print("reprojection error for frame:%04d, joint:%02d, cameras:[%d,%d,%d], was > threshold:%d"%(img_id, j_id, cam_list_iter[0].cam_id, cam_list_iter[1].cam_id, cam_list_iter[2].cam_id, 25), file=reprojection_error_log)
                                 count += 1
                                 # find best from just two cameras
                                 # determine which camera to delete
                                 assert len(distance_errs) == 3
                                 reproj_metrics_single = {'tri-camera-3d':self.points3d_m[img_id, j_id, :].copy()}
-                                diff1 = np.abs(np.max(distance_errs) - np.median(distance_errs))
-                                diff2 = np.abs(np.median(distance_errs) - np.min(distance_errs))
-                                c1_i = distance_errs.index(np.median(distance_errs))
-                                c2_i = distance_errs.index(np.min(distance_errs)) if diff2 < diff1 else distance_errs.index(np.max(distance_errs))
-                                p1 = (cam_list_iter[c1_i], points2d_iter[c1_i])
-                                p2 = (cam_list_iter[c2_i], points2d_iter[c2_i])
-                                optim_3d_points = triangulate_linear([p1[0], p2[0]], [p1[1], p2[1]])
+
+                                #Determination of the best two cameras for 3d triangulation
+                                #diff1 = np.abs(np.max(distance_errs) - np.median(distance_errs))
+                                #diff2 = np.abs(np.median(distance_errs) - np.min(distance_errs))
+                                #c1_i = distance_errs.index(np.median(distance_errs))
+                                #c2_i = distance_errs.index(np.min(distance_errs)) if diff2 < diff1 else distance_errs.index(np.max(distance_errs))
+                                #p1 = (cam_list_iter[c1_i], points2d_iter[c1_i])
+                                #p2 = (cam_list_iter[c2_i], points2d_iter[c2_i])
+                                #optim_3d_points = triangulate_linear([p1[0], p2[0]], [p1[1], p2[1]])
+
+                                #Determination of the best two cameras for 3d triangulation
+                                best_camera_pair = cam_list_iter
+                                best_pts_2d = points2d_iter
+                                current_err = err
+                                optim_3d_points = 0
+                                for p1, p2 in itertools.combinations(zip(cam_list_iter, points2d_iter), r=2):
+                                    optim_3d_points = triangulate_linear([p1[0], p2[0]], [p1[1], p2[1]])
+                                    reproj_errors = []
+                                    for c in [p1[0], p2[0]]:
+                                        full_err = c.reprojection_error_given(np.expand_dims(self.points3d_m[img_id, j_id, :], axis=0), np.expand_dims(c.points2d[img_id, j_id, :], axis=0))
+                                        reproj_errors.append(np.linalg.norm(full_err[1]))
+                                    if np.mean(reproj_errors) < current_err:
+                                        current_err = np.mean(reproj_errors)
+                                        best_camera_pair = [p1, p2]
+                                assert len(best_camera_pair) == 2
+                                p1 = best_camera_pair[0]
+                                p2 = best_camera_pair[1]
+                                    
+                                # Recording metrics
                                 reproj_metrics_single['optim-3d-pts'] = optim_3d_points
                                 reproj_metrics_single['all_cameras'] = cam_list_iter.copy()
-                                reproj_metrics_single['chosen_cameras'] = [cam_list_iter[c1_i], cam_list_iter[c2_i]]
+                                reproj_metrics_single['chosen_cameras'] = [p1[0], p2[0]]
                                 reproj_metrics_single['frame'] = img_id
                                 reproj_metrics_single['joint'] = j_id
-                                reproj_metrics_list.append(reproj_metrics_single)
-                                
-                                '''
-                                optim_3d_points = self.points3d_m[img_id, j_id, :]
-                                for p1, p2 in itertools.combinations(zip(cam_list_iter, points2d_iter), r=2):
-                                    if p1 == p2:
-                                        continue
-                                    option = triangulate_linear([p1[0], p2[0]], [p1[1], p2[1]])
-                                    option_err = np.mean([p1[0].reprojection_error_given(option, p1[1])[0], p2[0].reprojection_error_given(option, p2[1])[0]])
-                                    if option_err < err:
-                                        optim_3d_points = option
-                                        err = option_err
-                                '''
+
+                                # 'Saving' result
                                 self.points3d_m[img_id, j_id, :] = optim_3d_points
+
+                                # Calculating new reprojection error
+                                unused_cam_ids = {0,1,2,3,4,5,6}
+                                for c in [p1[0], p2[0]]:
+                                    unused_cam_ids -= {c.cam_id}
+                                    full_err = c.reprojection_error_given(np.expand_dims(self.points3d_m[img_id, j_id, :], axis=0), np.expand_dims(c.points2d[img_id, j_id, :], axis=0))
+                                    reprojection_error_distance[c.cam_id, img_id, j_id] = np.linalg.norm(full_err[1])
+                                for cid in unused_cam_ids:
+                                    reprojection_error_distance[cid, img_id, j_id] = 0
+                                reproj_metrics_list.append(reproj_metrics_single)
                                 
         if anipose_optimise_3d:
             assert len(self.cam_list) == 7
@@ -287,7 +315,40 @@ class CameraNetwork:
             anipose_shape_points2d = optimise_triangulation.reshape_2d(cam_list_copy)
             self.points3d_m = optimise_triangulation.optimise_3d(cam_list_copy, anipose_shape_points2d, self.points3d_m)
 
-        if True: # Show reprojection changes
+        if graph_reprojection_errors: # show reprojection errors:
+            import matplotlib.pyplot as plt
+            graph_data = []
+            if reprojection_error_optimisation:
+                graph_data = reprojection_error_distance
+            else:
+                # calculate reprojection error here
+                graph_data = np.zeros([7, data_shape[0], data_shape[1]])
+                for img_id, j_id in itertools.product(range(data_shape[0]), range(data_shape[1])):
+                    cam_list_iter = list()
+                    points2d_iter = list()
+                    for cam in [self.cam_list[cam_idx] for cam_idx in cam_id_list]:
+                        if np.any(cam[img_id, j_id, :] == 0):
+                            continue
+                        if not config["skeleton"].camera_see_joint(cam.cam_id, j_id):
+                            #this line removes the cameras that can't see this joint
+                            continue
+                        cam_list_iter.append(cam)
+                        points2d_iter.append(cam[img_id, j_id, :])
+                        for c in cam_list_iter:
+                            full_err = c.reprojection_error_given(np.expand_dims(self.points3d_m[img_id, j_id, :], axis=0), np.expand_dims(c.points2d[img_id, j_id, :], axis=0))
+                            graph_data[c.cam_id, img_id, j_id] = np.linalg.norm(full_err[1])
+                
+
+            for i, colour in zip(range(0,7), ["#FF0000","#00FF00","#0000FF","#00FFFF","#000000","#FF00FF","#FFFF00"]):
+                for j in [k for k in range(0,15)] + [k for k in range(19, 34)]:
+                    linestyle='.'
+                    if j in [4,9,14,23,28,33]:
+                        linestyle='-'
+                    plt.plot(graph_data[i, :, j], color=colour)
+            plt.show()
+            pdb.set_trace()
+            
+        if False: # Show reprojection changes
             import matplotlib.pyplot as plt
             import sys
             import skimage.io
