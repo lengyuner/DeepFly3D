@@ -58,7 +58,7 @@ def parse_csv_annotations(line):
     FRONT_LEG = BACK + 2*3
     MID_LEG = FRONT_LEG + 2*5
     BACK_LEG = MID_LEG + 2*5
-    cid = int(os.path.basename(line[0])[7])
+    cid = int(os.path.basename(line[0])[7])#change 7 to -16
     out = np.zeros([40,2])
     if cid < 3:
         out[30,:] = [float(line[ANTENNA]), float(line[ANTENNA + 1])]

@@ -218,7 +218,6 @@ class Core:
             dtype=float,
         )
         for cam_id in range(config["num_cameras"]):
-            pdb.set_trace()
             pts2d[cam_id, :] = self.camNetAll.cam_list[cam_id].points2d.copy()
 
         # ugly hack to temporarly incorporate manual corrections to calibration
@@ -430,7 +429,7 @@ class Core:
         dict_merge["points2d"] = pts2d
 
         if self.camNetLeft.has_calibration() and self.camNetLeft.has_pose():
-            self.camNetAll.triangulate(anipose_optimise_3d=False, reprojection_error_optimisation=True, graph_reprojection_errors=True)
+            self.camNetAll.triangulate(anipose_optimise_3d=True, reprojection_error_optimisation=True, graph_reprojection_errors=False, save_all_options=True)
             pts3d = self.camNetAll.points3d_m
             if config["procrustes_apply"]:
                 pass
