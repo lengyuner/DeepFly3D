@@ -199,7 +199,7 @@ class CameraNetwork:
     def has_heatmap(self):
         return self.cam_list[0].hm is not None
 
-    def triangulate(self, cam_id_list=None, anipose_optimise_3d=False, reprojection_error_optimisation=False, graph_reprojection_errors=False):
+    def triangulate(self, cam_id_list=None, anipose_optimise_3d=False, reprojection_error_optimisation=False, graph_reprojection_errors=False, save_all_options=False):
         assert self.cam_list
         count = 0
 
@@ -214,6 +214,12 @@ class CameraNetwork:
             reproj_metrics_list = []
             reprojection_error_distance = np.zeros([7, data_shape[0], data_shape[1]])
             reprojection_error_log = open(os.path.join(self.folder, 'df3d', 'reprojection_errors.log'), "w")
+            reprojection_error_optim_camera_not_used = np.zeros([data_shape[0], data_shape[1]])
+            reprojection_error_optim_camera_not_used[:] = np.nan
+            points3d_df3d_raw = self.points3d_m.copy()
+            points3d_df3d_optim = self.points3d_m.copy()
+            points3d_anipose_with_raw = self.points3d_m.copy()
+            points3d_anipose_with_optim = self.points3d_m.copy()
             for img_id in range(data_shape[0]):
                 for j_id in range(data_shape[1]):
                     cam_list_iter = list()
@@ -231,7 +237,10 @@ class CameraNetwork:
                         #self.points3d_m is 1400,38,3
                         #cam_list_iter is 3 cameras
                         #points2d_iter is 3 2d points
-                        self.points3d_m[img_id, j_id, :] = triangulate_linear(cam_list_iter, points2d_iter)
+                        df3d_points = triangulate_linear(cam_list_iter, points2d_iter)
+                        self.points3d_m[img_id, j_id, :] = df3d_points.copy()
+                        points3d_df3d_raw[img_id, j_id, :] = df3d_points.copy()
+                        points3d_df3d_optim[img_id, j_id, :] = df3d_points.copy()
                         if reprojection_error_optimisation:
                             errs = []
                             full_errs = []
@@ -256,15 +265,18 @@ class CameraNetwork:
                                 reproj_metrics_single = {'tri-camera-3d':self.points3d_m[img_id, j_id, :].copy()}
 
                                 #Determination of the best two cameras for 3d triangulation
-                                #diff1 = np.abs(np.max(distance_errs) - np.median(distance_errs))
-                                #diff2 = np.abs(np.median(distance_errs) - np.min(distance_errs))
-                                #c1_i = distance_errs.index(np.median(distance_errs))
-                                #c2_i = distance_errs.index(np.min(distance_errs)) if diff2 < diff1 else distance_errs.index(np.max(distance_errs))
-                                #p1 = (cam_list_iter[c1_i], points2d_iter[c1_i])
-                                #p2 = (cam_list_iter[c2_i], points2d_iter[c2_i])
-                                #optim_3d_points = triangulate_linear([p1[0], p2[0]], [p1[1], p2[1]])
+                                diff1 = np.abs(np.max(distance_errs) - np.median(distance_errs))
+                                diff2 = np.abs(np.median(distance_errs) - np.min(distance_errs))
+                                c1_i = distance_errs.index(np.median(distance_errs))
+                                c2_i                = distance_errs.index(np.min(distance_errs)) if diff2 < diff1 else distance_errs.index(np.max(distance_errs))
+                                unused_camera_index = distance_errs.index(np.min(distance_errs)) if diff2 > diff1 else distance_errs.index(np.max(distance_errs))
+                                reprojection_error_optim_camera_not_used[img_id, j_id] = int(unused_camera_index)
+                                p1 = (cam_list_iter[c1_i], points2d_iter[c1_i])
+                                p2 = (cam_list_iter[c2_i], points2d_iter[c2_i])
+                                optim_3d_points = triangulate_linear([p1[0], p2[0]], [p1[1], p2[1]])
 
                                 #Determination of the best two cameras for 3d triangulation
+                                '''
                                 best_camera_pair = cam_list_iter
                                 best_pts_2d = points2d_iter
                                 current_err = err
@@ -281,6 +293,7 @@ class CameraNetwork:
                                 assert len(best_camera_pair) == 2
                                 p1 = best_camera_pair[0]
                                 p2 = best_camera_pair[1]
+                                '''
                                     
                                 # Recording metrics
                                 reproj_metrics_single['optim-3d-pts'] = optim_3d_points
@@ -291,6 +304,7 @@ class CameraNetwork:
 
                                 # 'Saving' result
                                 self.points3d_m[img_id, j_id, :] = optim_3d_points
+                                points3d_df3d_optim[img_id, j_id, :] = optim_3d_points.copy()
 
                                 # Calculating new reprojection error
                                 unused_cam_ids = {0,1,2,3,4,5,6}
@@ -313,7 +327,24 @@ class CameraNetwork:
 
             #add in spatio-temporal filtering/triangulation optimisation here
             anipose_shape_points2d = optimise_triangulation.reshape_2d(cam_list_copy)
-            self.points3d_m = optimise_triangulation.optimise_3d(cam_list_copy, anipose_shape_points2d, self.points3d_m)
+            #self.points3d_m = optimise_triangulation.optimise_3d(cam_list_copy, anipose_shape_points2d, self.points3d_m)
+            points3d_anipose_with_raw = optimise_triangulation.optimise_3d(cam_list_copy, anipose_shape_points2d.copy(), points3d_df3d_raw)
+
+            if reprojection_error_optimisation:
+                # remove 2d points detected to be wrong
+                for frame, joint in itertools.product(range(data_shape[0]), range(data_shape[1])):
+                    if not np.isnan(reprojection_error_optim_camera_not_used[frame, joint]):
+                        anipose_shape_points2d[int(reprojection_error_optim_camera_not_used[frame, joint]), frame, joint, :] = np.nan
+                points3d_anipose_with_optim = optimise_triangulation.optimise_3d(cam_list_copy, anipose_shape_points2d.copy(), points3d_df3d_optim)
+                self.points3d_m = points3d_anipose_with_optim
+            else:
+                self.points3d_m = points3d_anipose_with_raw
+
+        if save_all_options:
+            np.save(os.path.join(self.folder, "df3d", "optimise_df3d_raw"), points3d_df3d_raw)
+            np.save(os.path.join(self.folder, "df3d", "optimise_df3d_optim"), points3d_df3d_optim)
+            np.save(os.path.join(self.folder, "df3d", "optimise_anipose_with_raw"), points3d_anipose_with_raw)
+            np.save(os.path.join(self.folder, "df3d", "optimise_anipose_with_optim"), points3d_anipose_with_optim)
 
         if graph_reprojection_errors: # show reprojection errors:
             import matplotlib.pyplot as plt
