@@ -11,7 +11,6 @@ def reshape_2d(cameras):
 	C: number of camera
 	N: number of frames
 	J: number of joints
-	K: number of constraints
 
 	0. values are replaced with np.nan
 	'''
