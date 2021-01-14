@@ -1,6 +1,7 @@
 import glob
 import os
 import pickle
+import sys
 
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
@@ -98,12 +99,13 @@ class CameraNetwork:
                             heatmap_path_list, str(e)
                         )
                     )
+                    print(heatmap_path_list,'$'*100)# TODO(JZ)
 
                     heatmap = np.load(file=heatmap_path_list[0], allow_pickle=True)
                     self.dict_name = os.path.dirname(list(heatmap.keys())[10]) + "/"
             if heatmap is None and len(heatmap_path_list) == 0 and pred is not None:
-                print("Error: no heatmaps", file=sys.stderr)
-                exit(9)
+                print("Error: no heatmaps", file=sys.stderr)    # TODO(JZ)
+                exit(9)# TODO(JZ)
 
             for cam_id in cam_id_list:
                 cam_id_read = self.cid2cidread[cam_id]
@@ -281,12 +283,15 @@ class CameraNetwork:
         err_list = list()
         for (img_id, j_id, _), _ in np.ndenumerate(self.points3d_m):
             p3d = self.points3d_m[img_id, j_id].reshape(1, 3)
+            # print(p3d) # TODO P3d
             if j_id in ignore_joint_list:
                 continue
             for cam in self.cam_list:
                 if not config["skeleton"].camera_see_joint(cam.cam_id, j_id):
                     continue
                 err_list.append((cam.project(p3d) - cam[img_id, j_id]).ravel())
+                # p3d =? # TODO(JZ)
+                # self.rvec, self.tvec, self.intr, self.distort
 
         err_mean = np.mean(np.abs(err_list))
         getLogger('df3d').debug("Ignore_list {}:  {:.4f}".format(ignore_joint_list, err_mean))
@@ -406,9 +411,13 @@ class CameraNetwork:
         if cam_id_list is None:
             cam_id_list = range(self.num_cameras)
 
+
         self.reprojection_error(
             cam_indices=cam_id_list, ignore_joint_list=ignore_joint_list
         )
+        # p3d = self.points3d_m[img_id, j_id].reshape(1, 3)
+        # self = p3d
+        # self.rvec, self.tvec, self.intr, self.distort
         x0, points_2d, n_cameras, n_points, camera_indices, point_indices = self.prepare_bundle_adjust_param(
             cam_id_list,
             ignore_joint_list=ignore_joint_list,

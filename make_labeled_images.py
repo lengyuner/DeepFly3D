@@ -9,7 +9,7 @@ def main():
 	save_to = os.path.join("data", "labeled")
 
 	for line in labels_file:
-		#setup the data
+		# setup the data
 		fields = line.split(',')
 		fpath_and_name = fields[0]
 		cid, data = parse_csv_annotations(fields)
@@ -27,6 +27,7 @@ def main():
 
 		plt.savefig(os.path.join(save_to, fpath_and_name.replace("/", "-")))
 		plt.close()
+
 
 def parse_csv_annotations(line):
     ANTENNA = 1

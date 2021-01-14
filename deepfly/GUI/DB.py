@@ -22,7 +22,8 @@ class PoseDB:
                 self.db["modified"] = {i: dict() for i in range(config["num_cameras"])}
         else:
             self.db_path = os.path.join(
-                self.folder, "pose_corr_{}.pkl".format(self.folder.replace("/", "-"))
+                # self.folder, "pose_corr_{}.pkl".format(self.folder.replace("/", "-"))
+                self.folder, "pose_corr_{}.pkl".format('data_test')
             )
             self.db = {i: dict() for i in range(config["num_cameras"])}
             self.db["folder"] = self.folder
@@ -64,8 +65,10 @@ class PoseDB:
         self.last_write_image_id = img_id
 
     def dump(self):
+        print('self.db_path', '\n', self.db_path, '$' * 100) # TODO(JZ)
         with open(self.db_path, "wb") as outfile:
             pickle.dump(self.db, outfile)
+        outfile.close() # TODO(JZ)
 
     def has_key(self, cam_id, img_id):
         return img_id in self.db[cam_id]

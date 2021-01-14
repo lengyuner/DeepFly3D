@@ -6,16 +6,19 @@ from PyQt5.QtGui import QImage, QPixmap, QPainter
 from PyQt5.QtWidgets import *
 from sklearn.neighbors import NearestNeighbors
 from deepfly.pose2d import ArgParse
+from deepfly.pose2d.utils.osutils import mkdir_p, isdir
+from deepfly.pose2d.utils.misc import get_time, to_numpy
 from deepfly.pose2d.drosophila import main as pose2d_main
 from deepfly.pose3d.procrustes.procrustes import procrustes_seperate
 
-from .CameraNetwork import CameraNetwork
-from .DB import PoseDB
-from .State import State, View, Mode
+# print('import deepfly successfully')
+from deepfly.GUI.CameraNetwork import CameraNetwork
+from deepfly.GUI.DB import PoseDB
+from deepfly.GUI.State import State, View, Mode
 
-from .util.main_util import button_set_width
-from .util.optim_util import energy_drosoph
-from .util.os_util import *
+from deepfly.GUI.util.main_util import button_set_width
+from deepfly.GUI.util.optim_util import energy_drosoph
+from deepfly.GUI.util.os_util import *
 
 from deepfly.CLI.core_api import known_users
 import re
@@ -36,6 +39,7 @@ class DrosophAnnot(QWidget):
                 options=QFileDialog.DontUseNativeDialog,
             )
             self.folder = str(dialog)
+
         elif len(sys.argv) >= 2:
             self.folder = str(sys.argv[1])
             self.folder = os.path.abspath(self.folder)
@@ -46,12 +50,18 @@ class DrosophAnnot(QWidget):
         else:
             max_num_images = None
 
+        print(self.folder, '$' * 100)
         if self.folder.endswith("/"):
             self.folder = self.folder[:-1]
-        self.folder_output = os.path.join(self.folder, 'df3d/')
+
+        # self.folder_output = os.path.join(self.folder, 'df3d/') # TODO(JZ)
+
+        self.folder_output = self.folder
+
         if not os.path.exists(self.folder_output):
             print(self.folder_output)
             os.makedirs(self.folder_output)
+
         self.state = State(self.folder)
         self.state.max_num_images = max_num_images
 
@@ -65,6 +75,7 @@ class DrosophAnnot(QWidget):
                 camera_order = ordering
                 print(f"Regexp success: {regex}, {ordering}")
                 break
+
         if camera_order is not None:
             write_camera_order(self.folder_output, np.array(camera_order))
             self.cidread2cid, self.cid2cidread = read_camera_order(self.folder_output)
@@ -80,9 +91,11 @@ class DrosophAnnot(QWidget):
         else:
             self.state.num_images = self.state.num_images
         print("Number of images: {}".format(self.state.num_images))
-        
+
+        # print('begin set cameras', "$"*70)
         self.set_cameras()
         self.set_layout()
+
 
         # setting the initial state
         self.set_pose(self.state.img_id)
@@ -241,6 +254,7 @@ class DrosophAnnot(QWidget):
         self.setWindowTitle(self.folder)
 
     def set_cameras(self):
+
         calib = read_calib(self.folder_output)
         self.camNetAll = CameraNetwork(
             image_folder=self.folder,
@@ -324,12 +338,77 @@ class DrosophAnnot(QWidget):
         else:
             self.state.correction_skip = False
 
+    # def pose2d_new(selfself):
+    #
+    #     from deepfly.pose2d.utils.misc import get_time, to_numpy
+    #
+    #     parser = create_parser()
+    #     args = parser.parse_args()
+    #
+    #     args.train_joints = np.arange(args.num_classes)
+    #     acc_joints_tmp = []
+    #     for i in range(3):
+    #         p = [(i * 5) + k for k in args.acc_joints]
+    #         acc_joints_tmp.extend(p)
+    #     args.acc_joints = acc_joints_tmp
+    #
+    #     # print(args.acc_joints, '^'*100) #TODO
+    #     args.num_images_max = 1
+    #     args.workers = 2
+    #
+    #     args.checkpoint = os.path.join(
+    #         args.checkpoint,
+    #         get_time()
+    #         + "_{}_{}_{}_{}_{}_{}_{}".format(
+    #             "predict" if args.unlabeled else "training",
+    #             args.arch,
+    #             args.stacks,
+    #             args.img_res,
+    #             args.blocks,
+    #             "mv" if args.multiview else "",
+    #             "temp" if args.multiview else "",
+    #             args.name,
+    #         ),
+    #     )
+    #     args.checkpoint = (
+    #         args.checkpoint.replace(" ", "_").replace("(", "_").replace(")", "_")
+    #     )
+    #     args.checkpoint = args.checkpoint.replace("__", "_").replace("--", "-")
+    #     getLogger('df3d').debug("Checkpoint dir: {}".format(args.checkpoint))
+    #     args.checkpoint_image_dir = os.path.join(args.checkpoint, "./images/")
+    #
+    #     # create checkpoint dir and image dir
+    #     if args.unlabeled is None:
+    #         if not isdir(args.checkpoint):
+    #             mkdir_p(args.checkpoint)
+    #         if not isdir(args.checkpoint_image_dir):
+    #             mkdir_p(args.checkpoint_image_dir)
+    #         if args.carry and not isdir(
+    #                 os.path.join(args.annotation_path, args.unlabeled + "_network")
+    #         ):
+    #             mkdir_p(os.path.join(args.annotation_path, args.unlabeled + "_network"))
+    #         if args.carry and not isdir(
+    #                 os.path.join(args.data_folder, args.unlabeled + "_network")
+    #         ):
+    #             mkdir_p(os.path.join(args.data_folder, args.unlabeled + "_network"))
+    #
+    #     print(args, '\n' * 3)
+    #     main(args)
+
+
     def pose2d_estimation(self):
+        # print('begain pose2d estimation','\n')
         parser = ArgParse.create_parser()
         args, _ = parser.parse_known_args()
+
+        # print(args, '\n pose2d_estimation')
+
         args.checkpoint = False
         args.unlabeled = self.folder
-        args.resume = config["resume"]
+        # args.resume = config["resume"]
+        # print(args.resume,'\nresume\n')
+        args.resume = '../../weights/sh8_mpii.tar'
+
         args.stacks = config["num_stacks"]
         args.test_batch = config["batch_size"]
         args.img_res = [config["heatmap_shape"][0] * 4, config["heatmap_shape"][1] * 4]
@@ -337,12 +416,68 @@ class DrosophAnnot(QWidget):
         args.num_classes = config["num_predict"]
 
         args.max_img_id = self.state.num_images - 1
+        print('self.state.num_images', self.state.num_images)
         # run the main, it will save the heatmaps and predictions in the image folder
+
+        args.train_joints = np.arange(args.num_classes)
+        acc_joints_tmp = []
+        for i in range(3):
+            p = [(i * 5) + k for k in args.acc_joints]
+            acc_joints_tmp.extend(p)
+        args.acc_joints = acc_joints_tmp
+
+        # print(args.acc_joints, '^'*100) #TODO
+        args.num_images_max = 2
+        args.workers = 2
+
+        # args.checkpoint = os.path.join(args.checkpoint, get_time())
+            # ,
+            # "_{}_{}_{}_{}_{}_{}_{}".format(
+            #     "predict" if args.unlabeled else "training",
+            #     args.arch,
+            #     args.stacks,
+            #     args.img_res,
+            #     args.blocks,
+            #     "mv" if args.multiview else "",
+            #     "temp" if args.multiview else "",
+            #     args.name,
+            # ),
+        # )
+
+        # args.checkpoint = (
+        #     args.checkpoint.replace(" ", "_").replace("(", "_").replace(")", "_")
+        # )
+        # args.checkpoint = args.checkpoint.replace("__", "_").replace("--", "-")
+        # # getLogger('df3d').debug("Checkpoint dir: {}".format(args.checkpoint))
+        # args.checkpoint_image_dir = os.path.join(args.checkpoint, "./images/")
+
+        # create checkpoint dir and image dir
+        # if args.unlabeled is None:
+        #     if not isdir(args.checkpoint):
+        #         mkdir_p(args.checkpoint)
+        #     if not isdir(args.checkpoint_image_dir):
+        #         mkdir_p(args.checkpoint_image_dir)
+        #     if args.carry and not isdir(
+        #             os.path.join(args.annotation_path, args.unlabeled + "_network")
+        #     ):
+        #         mkdir_p(os.path.join(args.annotation_path, args.unlabeled + "_network"))
+        #     if args.carry and not isdir(
+        #             os.path.join(args.data_folder, args.unlabeled + "_network")
+        #     ):
+        #         mkdir_p(os.path.join(args.data_folder, args.unlabeled + "_network"))
+
+        # print(args, '\npose2d_estimation(self)')
+
         _, _ = pose2d_main(args)
+
+        # print('pose2d_main(args)', '$' * 70)
 
         # makes sure cameras use the latest heatmaps and predictions
         self.set_cameras()
+
         self.set_mode(Mode.POSE)
+
+        # print('self.set_mode(Mode.POSE)', '$'*70)
 
         for ip in self.image_pose_list:
             ip.cam = self.camNetAll[ip.cam.cam_id]

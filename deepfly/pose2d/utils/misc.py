@@ -33,6 +33,7 @@ def to_torch(ndarray):
 def save_dict(d, name):
     with open(name, "wb") as f:
         pickle.dump(d, f, pickle.HIGHEST_PROTOCOL)
+    f.close()
 
 
 def save_json(d, name):

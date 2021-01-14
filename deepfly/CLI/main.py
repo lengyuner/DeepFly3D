@@ -45,7 +45,7 @@ def setup_logger(args):
 
 def parse_cli_args():
     parser = argparse.ArgumentParser(
-        description = "DeepFly3D pose estimation"
+        description="DeepFly3D pose estimation"
     )
     parser.add_argument(
         "-v", "--verbose",

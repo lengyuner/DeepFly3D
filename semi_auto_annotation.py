@@ -101,7 +101,7 @@ class Annotator(QWidget):
 			return pose_corr_slice[19:, :]
 
 	def joint_number_to_colour(self, jid):
-		#leg_colours = dict(front_right="#FF0000", mid_right="#0000FF", back_right="#00FF00", front_left="#FFFF00", mid_left="#FF00FF", back_left="#00FFFF")
+		# leg_colours = dict(front_right="#FF0000", mid_right="#0000FF", back_right="#00FF00", front_left="#FFFF00", mid_left="#FF00FF", back_left="#00FFFF")
 		if jid >= 16 and jid <= 18:
 			return "#554400" #TODO find correct colour for stripes
 

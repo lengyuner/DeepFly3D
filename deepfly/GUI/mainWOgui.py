@@ -1,18 +1,22 @@
+
+
 import ast
 import pickle
 import sys
+# from PyQt5.QtCore import *
+# from PyQt5.QtGui import QImage, QPixmap, QPainter
+# from PyQt5.QtWidgets import *
 from sklearn.neighbors import NearestNeighbors
 from deepfly.pose2d import ArgParse
 from deepfly.pose2d.drosophila import main as pose2d_main
 from deepfly.pose3d.procrustes.procrustes import procrustes_seperate
+from deepfly.GUI.CameraNetwork import CameraNetwork
+from deepfly.GUI.DB import PoseDB
+from deepfly.GUI.State import State, View, Mode
 
-from .CameraNetwork import CameraNetwork
-from .DB import PoseDB
-from .State import State, View, Mode
-
-from .util.main_util import button_set_width
-from .util.optim_util import energy_drosoph
-from .util.os_util import *
+from deepfly.GUI.util.main_util import button_set_width
+from deepfly.GUI.util.optim_util import energy_drosoph
+from deepfly.GUI.util.os_util import *
 
 from deepfly.CLI.core_api import known_users
 import re
@@ -461,3 +465,22 @@ class ImagePose():
         return False
 
 
+# C:/Users/ps/Desktop/djz/DeepFly3D_hubot/data/test3 1
+# def main():
+#     app = QApplication([])
+#     window = DrosophAnnot()
+#     screen = app.primaryScreen()
+#     size = screen.size()
+#     _, width = size.height(), size.width()
+#     # hw_ratio = 960 * 2 / 360.0
+#
+#     hw_ratio = config["image_shape"][0] * 1.2 / config["image_shape"][1]
+#     app_width = width
+#     app_height = int(app_width / hw_ratio)
+#     window.resize(app_width, app_height)
+#     window.show()
+#     app.exec_()
+#
+#
+# if __name__ == "__main__":
+#     main()

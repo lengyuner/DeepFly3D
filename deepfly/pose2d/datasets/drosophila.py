@@ -210,7 +210,11 @@ class Drosophila(data.Dataset):
 
         if self.unlabeled:
             image_folder_path = os.path.join(self.unlabeled)
-            cidread2cid, cid2cidread = read_camera_order(os.path.join(image_folder_path, './df3d/'))
+            # cidread2cid, cid2cidread = read_camera_order(os.path.join(image_folder_path, 'df3d/'))
+            # cidread2cid, cid2cidread = read_camera_order(os.path.join(image_folder_path, './df3d/'))
+
+            cidread2cid, cid2cidread = read_camera_order(image_folder_path)   # TODO(JZ)
+            # cidread2cid, cid2cidread = read_camera_order('./data/temp')
             self.cidread2cid[self.unlabeled] = cidread2cid
 
             for image_name_jpg in os.listdir(image_folder_path):
@@ -230,12 +234,12 @@ class Drosophila(data.Dataset):
             cid_read, img_id = parse_img_name(image_name)
 
             image_file_pad = os.path.join(
-                self.data_folder,
+                # self.data_folder, # TODO(JZ)
                 folder_name.replace("_network", ""),
                 constr_img_name(cid_read, img_id) + ".jpg",
             )
             image_file = os.path.join(
-                self.data_folder,
+                # self.data_folder, # TODO(JZ)
                 folder_name.replace("_network", ""),
                 constr_img_name(cid_read, img_id, pad=False) + ".jpg",
             )
@@ -350,7 +354,7 @@ class Drosophila(data.Dataset):
 
     def __get_image_path(self, folder_name, camera_id, pose_id, pad=True):
         img_path = os.path.join(
-            self.data_folder,
+            # self.data_folder,     # TODO(JZ)
             folder_name.replace("_network", ""),
             constr_img_name(camera_id, pose_id, pad=pad) + ".jpg",
         )
@@ -370,6 +374,7 @@ class Drosophila(data.Dataset):
             img_orig = load_image(self.__get_image_path(folder_name, cid_read, pose_id))
         except FileNotFoundError:
             try:
+                print(self.__get_image_path(folder_name, cid_read, pose_id, pad=True), '_'*10)
                 img_orig = load_image(
                     self.__get_image_path(folder_name, cid_read, pose_id, pad=False)
                 )
@@ -406,8 +411,8 @@ class Drosophila(data.Dataset):
         if flip:
             img_orig = torch.from_numpy(fliplr(img_orig.numpy())).float()
             pts = shufflelr(pts, width=img_orig.size(2), dataset="drosophila")
-        print("img_orig       " + str(type(img_orig)))
-        print("self.img_res   " + str(self.img_res))
+        # print("img_orig       " + str(type(img_orig)))    # TODO(JZ)
+        # print("self.img_res   " + str(self.img_res))
         img_norm = im_to_torch(scipy.misc.imresize(img_orig, self.img_res))
 
         # Generate ground truth heatmap
@@ -463,3 +468,5 @@ class Drosophila(data.Dataset):
 
     def __len__(self):
         return len(self.annotation_key)
+
+

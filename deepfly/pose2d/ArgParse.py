@@ -15,7 +15,7 @@ def add_arguments(parser):
     parser.add_argument(
         "-j",
         "--workers",
-        default=8,
+        default=1, # TODO(JZ) #8
         type=int,
         metavar="N",
         help="number of data loading workers (default: 4)",
@@ -145,7 +145,7 @@ def add_arguments(parser):
         "--annotation-path",
         dest="annotation_path",
         type=str,
-        default="/home/guenel/public_html/drosophilaannotate/data/",
+        default="./data/", # TODO(JZ)
     )
     # parser.add_argument('--output-image', dest='output_image', action='store_true', default=False)
     parser.add_argument(

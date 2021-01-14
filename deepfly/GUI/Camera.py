@@ -243,7 +243,7 @@ class Camera:
     def get_image(self, img_id, flip=False):
         try:
             image_path = os.path.join(self.image_folder,"camera_{}_img_{:06}.jpg".format(self.cam_id_read, img_id))
-            #print('Reading: ' + image_path)
+            # print('Reading: ' + image_path)##
             img = cv2.imread(image_path)
             if img is None:
                 raise FileNotFoundError
@@ -254,6 +254,7 @@ class Camera:
                     "camera_{}_img_{}.jpg".format(self.cam_id_read, img_id),
                 )
             )
+        # print(image_path, '$'*100 )##
         if img is None:
             print("Cannot find", self.cam_id, img_id)
             raise FileNotFoundError

@@ -1,5 +1,47 @@
+
+
+
+
+'''
+Namespace(acc_joints=[2, 3, 4, 7, 8, 9, 12, 13, 14], annotation_path='/home/guenel/public_html/drosophilaannotate/data/',
+arch='hg', augmentation=True, blocks=1, carry=False, checkpoint='checkpoint',
+csv_file_train=None, csv_file_val=None, data_folder='data/drosophila/', epochs=200,
+features=128, gamma=0.1, hm_res=[64, 128], img_res=[256, 512], inplanes=64,
+json_file='C:\\Users\\ps\\Desktop\\djz\\DeepFly3D_hubot\\deepfly\\pose2d\\../../data/drosophilaimaging-export.json',
+lr=0.00025, momentum=0, multiview=False, name='', num_classes=19, num_output_image=0,
+output_folder='df3d/', resume='./weights/sh8_mpii.tar', schedule=[25, 40, 70], sigma=1,
+stacks=8, start_epoch=0, stride=2, test_batch=64, train_batch=6, train_folder_list=None,
+train_joints=array([ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
+unlabeled='./data/test', unlabeled_recursive=False, weight_decay=0, workers=8)
+
+
+# python deepfly/pose2d/drosophila.py --resume ./weights/sh8_deepfly.tar --unlabeled /home/user/Desktop/DeepFly3D/data/test
+# python deepfly/pose2d/drosophila.py --resume ./weights/sh8_mpii.tar --unlabeled ./data/test
+# python deepfly/pose2d/drosophila.py --resume ./weights/sh8_mpii.tar --unlabeled ./data/test
+# python deepfly/pose2d/drosophila.py --resume ./weights/sh8_mpii.tar --unlabeled ./data/test
+
+# python deepfly/pose2d/drosophila.py --resume ./weights/sh8_deepfly.tar --unlabeled /home/user/Desktop/DeepFly3D/data/test
+# python deepfly/pose2d/drosophila.py --resume ./weights/sh8_mpii.tar --unlabeled ./data/test
+
+# python test.py --resume ./weights/sh8_mpii.tar --unlabeled ./data/test
+
+conda activate deepfly3
+cd Desktop
+cd djz
+
+cd DeepFly3D_hubot
+
+python test.py --resume ./weights/sh8_mpii.tar --unlabeled ./data/test
+python pose2d/drosophila.py --resume ./weights/sh8_deepfly.tar --unlabeled /home/user/Desktop/DeepFly3D/data/test
+
+'''
+
+
+
 from __future__ import print_function, absolute_import
 
+import sys
+sys.path.append('..')
 import time
 
 import matplotlib as mpl
@@ -36,6 +78,9 @@ import cv2
 
 import pdb
 
+# print('Import successfully')
+# print('Current workspace is: ', os.getcwd())
+
 best_acc = 0
 
 def weighted_mse_loss(inp, target, weights):
@@ -47,6 +92,7 @@ def weighted_mse_loss(inp, target, weights):
 
 
 def main(args):
+
     global best_acc
 
     # create model
@@ -77,6 +123,7 @@ def main(args):
 
     # optionally resume from a checkpoint
     title = "Drosophila-" + args.arch
+    # print(isfile(args.resume),'args.resume','^'*100)
     if args.resume:
         if isfile(args.resume):
             getLogger('df3d').debug("Loading checkpoint '{}'".format(args.resume))
@@ -103,6 +150,7 @@ def main(args):
                 model.load_state_dict(state, strict=False)
             elif "mpii" in args.resume and args.unlabeled:
                 model.load_state_dict(checkpoint['state_dict'], strict=False)
+                # print("$"*100)
             else:
                 pretrained_dict = checkpoint["state_dict"]
                 model.load_state_dict(pretrained_dict, strict=True)
@@ -116,6 +164,7 @@ def main(args):
                         args.img_res, args.hm_res
                     )
                 )
+
             getLogger('df3d').debug(
                 "Loaded checkpoint '{}' (epoch {})".format(
                     args.resume, checkpoint["epoch"]
@@ -143,19 +192,26 @@ def main(args):
 
     # cudnn.benchmark = True
     getLogger('df3d').debug("Total params: %.2fM" % (sum(p.numel() for p in model.parameters()) / 1000000.0))
-
+    # print(args.unlabeled,'unlabeled','$'*100)
+    # if args.unlabeled:
+    #     print(args.unlabeled, 'unlabeled', '$' * 100)
     if args.unlabeled:
-        if args.unlabeled[0] == '/': #wtf why does it have a slash before it where did that come from?
+        if args.unlabeled[0] == '/': # wtf why does it have a slash before it where did that come from?
             args.unlabeled = args.unlabeled[1:]
         unlabeled_folder = args.unlabeled
         print("UNLABELED FOLDER:")
         print(unlabeled_folder)
+
         max_img_id = get_max_img_id(unlabeled_folder)
+
+
         try:
             max_img_id = min(max_img_id, args.num_images_max-1)
+            # print(max_img_id, 'try','$' * 100)
         except:
             pass
         getLogger('df3d').debug('Going to process {} images'.format(max_img_id+1))
+        # print(unlabeled_folder, '$' * 100)
         unlabeled_loader = DataLoader(
             deepfly.pose2d.datasets.Drosophila(
                 data_folder=args.data_folder,
@@ -177,16 +233,25 @@ def main(args):
             pin_memory=False,
             drop_last=False,
         )
-
+        # print(unlabeled_folder, 'before validate','$' * 100)
         valid_loss, valid_acc, val_pred, val_score_maps, mse, jump_acc = validate(
             unlabeled_loader, 0, model, criterion, args, save_path=unlabeled_folder
         )
-        unlabeled_folder_replace = unlabeled_folder.replace("/", "-")
+        # print(unlabeled_folder, 'after validate', '$' * 100)
+        # print(unlabeled_folder, '$' * 100)
+        unlabeled_folder_replace = 'data_test'#os.path.join(unlabeled_folder, 'a')
+
+        # print(unlabeled_folder_replace, '$' * 100)
+        # unlabeled_folder_replace = unlabeled_folder.replace("/", "-") # TODO(JZ)
+        # print(unlabeled_folder_replace, 'unlabeled_folder_replace','$' * 100)
         getLogger('df3d').debug(f"val_score_maps have shape: {val_score_maps.shape}")
 
         getLogger('df3d').debug("Saving Results, flipping heatmaps")
         cid_to_reverse = config["flip_cameras"]  # camera id to reverse predictions and heatmaps
-        cidread2cid, cid2cidread = read_camera_order(os.path.join(unlabeled_folder, 'df3d'))
+        # cidread2cid, cid2cidread = read_camera_order(os.path.join(unlabeled_folder, 'df3d')) # TODO
+        cidread2cid, cid2cidread = read_camera_order(unlabeled_folder)  # TODO
+        # cidread2cid, cid2cidread = read_camera_order(os.path.join('./data/temp', 'df3d'))
+        # print(cidread2cid, '\n',cid2cidread, '$' * 100)
         cid_read_to_reverse = [cid2cidread[cid] for cid in cid_to_reverse]
         getLogger('df3d').debug(
             "Flipping heatmaps for images with cam_id: {}".format(
@@ -196,24 +261,48 @@ def main(args):
         val_pred[cid_read_to_reverse, :, :, 0] = (
             1 - val_pred[cid_read_to_reverse, :, :, 0]
         )
+        # print('$' * 100)
         for cam_id in cid_read_to_reverse:
             for img_id in range(val_score_maps.shape[1]):
                 for j_id in range(val_score_maps.shape[2]):
                     val_score_maps[cam_id, img_id, j_id, :, :] = cv2.flip(
                         val_score_maps[cam_id, img_id, j_id, :, :], 1
                     )
+        # print(val_pred.shape)
+        print(os.path.join(args.unlabeled,"preds_{}.pkl".format(unlabeled_folder_replace) ))
 
         save_dict(
             val_pred,
             os.path.join(
-                args.data_folder,
-                "{}".format(unlabeled_folder),
-                args.output_folder,
-                "./preds_{}.pkl".format(unlabeled_folder_replace),
+                args.unlabeled,
+                "preds_{}.pkl".format(unlabeled_folder_replace),
+                # args.data_folder,
+                # "{}".format(unlabeled_folder),
+                # args.output_folder,
+                # "./preds_{}.pkl".format(unlabeled_folder_replace), # TODO(JZ)
+            ),
+        )
+
+
+        # print(val_score_maps.shape)
+        print(os.path.join(args.unlabeled,"score_maps_{}.pkl".format(unlabeled_folder_replace) ))
+
+
+        save_dict(
+            val_score_maps,
+            os.path.join(
+                args.unlabeled,
+                "score_maps_{}.pkl".format(unlabeled_folder_replace),
+                # args.data_folder,
+                # "{}".format(unlabeled_folder),
+                # args.output_folder,
+                # "./preds_{}.pkl".format(unlabeled_folder_replace), # TODO(JZ)
             ),
         )
 
         getLogger('df3d').debug("Finished saving results")
+        # print(unlabeled_folder_replace)
+
     else:
         train_loader, val_loader = create_dataloader()
         lr = args.lr
@@ -268,8 +357,9 @@ def main(args):
             logger.plot(["Train Acc", "Val Acc"])
             savefig(os.path.join(args.checkpoint, "log.eps"))
             plt.close(fig)
+    # print('finished','$'*100)
     return val_score_maps, val_pred
-    logger.close()
+    # logger.close()
 
 
 def train(train_loader, epoch, model, optimizer, criterion, args):
@@ -463,14 +553,28 @@ def validate(val_loader, epoch, model, criterion, args, save_path=False):
     if save_path is not None:
         print("SAVE_PATH:")
         print(save_path)
-        unlabeled_folder_replace = save_path.replace("/", "-")
+        unlabeled_folder_replace = 'data_test' #save_path.replace("/", "-")  # TODO(JZ)
         # score_map_filename = os.path.join(args.data_folder, "./heatmap_{}.pkl".format(unlabeled_folder_replace))
         score_map_filename = os.path.join(
-            args.data_folder,
+            # args.data_folder,
             "{}".format(save_path),
-            args.output_folder,
+            # args.output_folder,
             "heatmap_{}.pkl".format(unlabeled_folder_replace),
         )
+
+        # save_dict(
+        #     val_score_maps,
+        #     os.path.join(
+        #         args.unlabeled,
+        #         "output/score_maps_{}.pkl".format(unlabeled_folder_replace),
+        #         # args.data_folder,
+        #         # "{}".format(unlabeled_folder),
+        #         # args.output_folder,
+        #         # "./preds_{}.pkl".format(unlabeled_folder_replace), # TODO(JZ)
+        #     ),
+        # )
+        print(score_map_filename,'\nscore_map_filename\n','$'*70)
+
         score_map_path = Path(score_map_filename)
         score_map_path.parent.mkdir(exist_ok=True, parents=True)
         score_map_arr = np.memmap(
@@ -701,6 +805,11 @@ if __name__ == "__main__":
         p = [(i * 5) + k for k in args.acc_joints]
         acc_joints_tmp.extend(p)
     args.acc_joints = acc_joints_tmp
+
+    # print(args.acc_joints, '^'*100) #TODO
+    args.num_images_max = 1
+    args.workers = 2
+
     getLogger('df3d').setLevel(10)
     getLogger('df3d').debug(f"Training joints: {args.train_joints}")
     getLogger('df3d').debug(f"Acc joints: {args.acc_joints}")
@@ -741,4 +850,17 @@ if __name__ == "__main__":
         ):
             mkdir_p(os.path.join(args.data_folder, args.unlabeled + "_network"))
 
+    print(args, '\n' * 3)
     main(args)
+    # logger.close()
+
+# woziji kankna ba
+# ganjue yishi banhui gaobu chulai
+# zhege ren de daima shizai shi tai shile
+
+
+
+
+
+
+
